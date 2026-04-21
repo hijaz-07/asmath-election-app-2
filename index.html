@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
 <title>Booth Setup · Election Tracker</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <style>
 :root{--bg1:#0f172a;--bg2:#1e293b;--card:rgba(255,255,255,.08);--card-border:rgba(255,255,255,.14);--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--accent2:#8b5cf6;--danger:#fb7185;--success:#34d399;--shadow:0 20px 60px rgba(0,0,0,.35)}
@@ -21,7 +22,6 @@ body{min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Se
     <h1>TAMIL NADU STATE ASSEMBLY ELECTION</h1>
     <p>Enter booth details to start or join a live session.</p>
   </div>
-  <!-- Resume last session button -->
   <div id="resumeSection" class="resume-section" style="display: none;">
     <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
       <span><i class="fas fa-history" style="margin-right: 8px;"></i><span id="lastBoothLabel"></span></span>
@@ -71,7 +71,6 @@ body{min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Se
 
   const STORAGE_LAST_BOOTH = 'lastBooth';
 
-  // Load last booth from localStorage
   function loadLastBooth() {
     try {
       const saved = localStorage.getItem(STORAGE_LAST_BOOTH);
