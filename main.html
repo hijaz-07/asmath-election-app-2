@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>Live Voter List · Real‑Time Sync</title>
+  <title>Live Voter List · Scalable</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <!-- Firebase SDK -->
   <script type="module">
@@ -11,7 +11,6 @@
     import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
     const firebaseConfig = {
       apiKey: "AIzaSyDbA8xy7DatwLkqNVPmkZELpwtffUw7Zhw",
       authDomain: "asmath-election-web-app.firebaseapp.com",
@@ -19,9 +18,9 @@
       projectId: "asmath-election-web-app",
       storageBucket: "asmath-election-web-app.firebasestorage.app",
       messagingSenderId: "141829119383",
-      appId: "1:141829119383:web:62bd044daba925776978d2",
-      measurementId: "G-ZVE0V77XJK"
+      appId: "1:141829119383:web:62bd044daba925776978d2"
     };
+
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const auth = getAuth(app);
@@ -39,7 +38,6 @@
     console.log('✅ Firebase initialized');
   </script>
   <style>
-    /* ========== GLOBAL (Laptop First) ========== */
     :root {
       --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
       --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
@@ -105,7 +103,7 @@
     .controls-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
     .search-wrapper {
       display: flex; align-items: center; background: rgba(15,23,42,0.6); border-radius: 40px;
-      padding: 4px 4px 4px 18px; border: 1px solid var(--card-border); flex: 1 1 40px;
+      padding: 4px 4px 4px 18px; border: 1px solid var(--card-border); flex: 1 1 260px;
     }
     .search-wrapper i { color: var(--muted); }
     .search-wrapper input {
@@ -165,52 +163,30 @@
     }
     .select-all-checkbox { transform: scale(1.2); accent-color: var(--accent); cursor: pointer; }
 
-    /* ========== MOBILE DEDICATED UI (max-width: 768px) ========== */
     @media (max-width: 768px) {
       body { padding: 12px; }
       .app-container { max-width: 100%; }
       .glass-card { padding: 18px 16px; border-radius: 24px; margin-bottom: 16px; }
       .main-heading { font-size: 1.5rem; padding-bottom: 12px; }
-
       .booth-header { flex-direction: column; align-items: stretch; gap: 16px; }
       .booth-info h1 { font-size: 1.5rem; }
       .booth-meta { flex-wrap: wrap; gap: 12px; font-size: 0.9rem; }
       .action-buttons { flex-direction: column; width: 100%; }
       .action-buttons .btn { width: 100%; justify-content: center; padding: 16px 12px; font-size: 1rem; }
-
       .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
       .stat-card { padding: 12px 8px; }
       .stat-value { font-size: 1.6rem; }
       .stat-percent { font-size: 0.75rem; display: block; margin-left: 0; }
       .stat-label { font-size: 0.75rem; }
-
       .controls-bar { flex-direction: column; align-items: stretch; gap: 8px; }
-
-      /* 🔽 ULTRA-COMPACT SEARCH BAR */
-      .search-wrapper {
-        height: 36px;
-        padding: 2px 2px 2px 10px;
-        border-radius: 30px;
-        align-items: center;
-      }
-      .search-wrapper i {
-        font-size: 0.85rem;
-        margin-right: 4px;
-      }
-      .search-wrapper input {
-        height: 100%;
-        padding: 0 6px;
-        font-size: 0.9rem;
-        line-height: 1;
-      }
-
+      .search-wrapper { height: 36px; padding: 2px 2px 2px 10px; border-radius: 30px; align-items: center; }
+      .search-wrapper i { font-size: 0.85rem; margin-right: 4px; }
+      .search-wrapper input { height: 100%; padding: 0 6px; font-size: 0.9rem; line-height: 1; }
       .filter-group { justify-content: center; }
       .filter-btn { padding: 8px 12px; font-size: 0.85rem; flex: 1 0 auto; }
-
       .voter-actions { flex-wrap: wrap; }
       .voter-actions .btn { flex: 1 1 calc(50% - 8px); padding: 14px 8px; font-size: 0.9rem; }
       #selectedInfo { width: 100%; text-align: center; margin-left: 0 !important; margin-top: 8px; }
-
       .voter-table-container { max-height: 450px; }
       table { font-size: 0.85rem; }
       th, td { padding: 12px 8px; }
@@ -219,36 +195,24 @@
       @media (max-width: 480px) {
         th:nth-child(4), td:nth-child(4) { display: none; }
       }
-
       .login-card { max-width: 100%; margin: 0; }
       .login-card h2 { font-size: 1.3rem; }
       .login-card input { padding: 16px; font-size: 16px; }
-
       .footer-note { flex-direction: column; align-items: center; gap: 8px; text-align: center; }
       .readonly-badge { margin-left: 0; margin-top: 8px; }
     }
-
-    /* Extra small devices (max-width: 480px) */
     @media (max-width: 480px) {
       .stats-grid { grid-template-columns: 1fr; }
       .booth-meta { flex-direction: column; gap: 6px; }
       .filter-btn { font-size: 0.8rem; padding: 6px 10px; }
       .btn { padding: 14px 10px; }
-
-      .search-wrapper {
-        height: 32px;
-        padding: 2px 2px 2px 8px;
-      }
-      .search-wrapper input {
-        font-size: 0.85rem;
-        padding: 0 4px;
-      }
+      .search-wrapper { height: 32px; padding: 2px 2px 2px 8px; }
+      .search-wrapper input { font-size: 0.85rem; padding: 0 4px; }
     }
   </style>
 </head>
 <body>
 <div class="app-container">
-  <!-- Booth Header Card -->
   <div class="glass-card">
     <div class="main-heading">TAMIL NADU STATE ASSEMBLY ELECTION</div>
     <div class="booth-header">
@@ -271,17 +235,15 @@
     <div class="stats-grid" id="statsContainer"></div>
   </div>
 
-  <!-- Login Card -->
   <div class="glass-card login-card" id="loginCard" style="display: none;">
     <h2><i class="fas fa-lock" style="margin-right: 8px;"></i> Editor Login</h2>
     <p style="color: var(--muted); margin-bottom: 20px;">Enter the shared editor credentials to modify data.</p>
-    <input type="email" id="loginEmail" placeholder="Email" autocomplete="email">
+    <input type="email" id="loginEmail" placeholder="Email" autocomplete="email" value="editor@election.local">
     <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
     <button class="btn btn-primary" id="loginBtn">Log In</button>
     <div id="loginError" style="color: var(--danger); font-size: 0.9rem; margin-top: 12px;"></div>
   </div>
 
-  <!-- Voter Table Card -->
   <div class="glass-card" id="voterCard">
     <div class="controls-bar">
       <div class="search-wrapper">
@@ -297,7 +259,6 @@
       </div>
     </div>
 
-    <!-- Action Buttons -->
     <div class="voter-actions" style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
       <button class="btn btn-primary" id="markOurBtn"><i class="fas fa-user-check"></i> Mark Our</button>
       <button class="btn" id="markPolledBtn"><i class="fas fa-vote-yea"></i> Mark Polled</button>
@@ -383,6 +344,11 @@
     let currentUser = null; 
     let dbRef = null; 
     let dataListenerUnsubscribe = null;
+    let viewerInterval = null;
+    let lastGeneratedAt = null;
+
+    // 🔽 CHANGE THIS TO YOUR GITHUB USERNAME
+    const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
 
     displayAssembly.textContent = boothData.assemblyName;
     displayBooth.textContent = boothData.boothNo;
@@ -399,7 +365,11 @@
       } else {
         loginCard.style.display = 'none'; voterCard.style.display = 'block';
         logoutBtn.style.display = (user && !isReadOnly) ? 'inline-flex' : 'none';
-        if (!dataListenerUnsubscribe) setupDataListener();
+        if (!isReadOnly) {
+          if (!dataListenerUnsubscribe) setupDataListener();
+        } else {
+          startViewerPolling(boothId);
+        }
       }
       applyReadOnlyMode();
     });
@@ -456,6 +426,36 @@
       }, (err) => { console.error(err); tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Error: ${err.message}</td></tr>`; });
     }
 
+    async function fetchSnapshot(boothId) {
+      try {
+        const res = await fetch(`${CDN_BASE}/${boothId}.json`);
+        if (!res.ok) throw new Error('Snapshot not found');
+        const data = await res.json();
+        if (!lastGeneratedAt || data.generatedAt > lastGeneratedAt) {
+          lastGeneratedAt = data.generatedAt;
+          displayAssembly.textContent = data.assemblyName;
+          displayBooth.textContent = data.boothNo;
+          totalVoters = data.votersCount;
+          displayTotal.textContent = totalVoters;
+          voters = data.voters || [];
+          renderTable();
+        }
+      } catch (error) {
+        console.error('Snapshot fetch failed:', error);
+      }
+    }
+
+    function startViewerPolling(boothId) {
+      fetchSnapshot(boothId);
+      viewerInterval = setInterval(() => fetchSnapshot(boothId), 10000);
+    }
+
+    function stopViewerPolling() {
+      if (viewerInterval) clearInterval(viewerInterval);
+    }
+
+    window.addEventListener('beforeunload', stopViewerPolling);
+
     function updateVoterStatus(index, newStatus) {
       if (isReadOnly || !currentUser) return;
       const updates = {}; updates[`voters/${index}`] = { status: newStatus, updatedAt: new Date().toISOString() };
@@ -466,7 +466,7 @@
       if (isReadOnly || !currentUser || indices.length === 0) return;
       const updates = {};
       indices.forEach(idx => {
-        const cur = voters[idx].status;
+        const cur = voters[idx]?.status || '';
         const newStatus = newStatusResolver(cur);
         updates[`voters/${idx}`] = { status: newStatus, updatedAt: new Date().toISOString() };
       });
@@ -566,16 +566,13 @@
         alert('Please select at least one voter (use checkboxes or click a row).');
         return;
       }
-      
       const filtered = getFilteredVoters();
       const totalInView = filtered.length;
       const allSelected = (indices.length === totalInView && totalInView > 0);
-      
       if (allSelected) {
         const confirmMsg = `⚠️ You are about to update ALL ${totalInView} voters in the current view.\n\nThis action cannot be undone. Continue?`;
         if (!confirm(confirmMsg)) return;
       }
-      
       bulkUpdateStatus(indices, statusResolver);
       selectedIndices.clear();
       singleSelectedIndex = -1;
@@ -598,11 +595,7 @@
       renderTable();
     });
 
-    deselectAllBtn.addEventListener('click', () => {
-      selectedIndices.clear();
-      singleSelectedIndex = -1;
-      renderTable();
-    });
+    deselectAllBtn.addEventListener('click', () => { selectedIndices.clear(); singleSelectedIndex = -1; renderTable(); });
 
     tbody.addEventListener('click', (e) => {
       if (e.target.type === 'checkbox') return;
@@ -621,7 +614,7 @@
       if (!row) return;
       const idx = parseInt(row.dataset.index);
       if (selectedIndices.size > 0) return;
-      const cur = voters[idx].status;
+      const cur = voters[idx]?.status;
       if (cur === 'our') updateVoterStatus(idx, '');
       else if (cur === 'polled') updateVoterStatus(idx, 'ourpolled');
       else if (cur === 'ourpolled') updateVoterStatus(idx, 'polled');
