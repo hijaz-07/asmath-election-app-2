@@ -32,7 +32,6 @@
     console.log('✅ Firebase Auth initialized');
   </script>
   <style>
-    /* ... all styles unchanged from previous version ... */
     :root {
       --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
       --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
@@ -296,14 +295,12 @@
     const signOutUser = window.firebaseSignOut;
 
     const urlParams = new URLSearchParams(window.location.search);
-    // Ensure boothId is always a string
     let boothId = urlParams.get('booth');
     if (!boothId) {
       alert('No booth specified. Returning to setup.');
       window.location.href = 'index.html';
       return;
     }
-    // Decode in case it was encoded
     boothId = decodeURIComponent(boothId);
     console.log('📋 Booth ID:', boothId);
 
@@ -400,7 +397,8 @@
     // ---------- Polling for Snapshot ----------
     async function fetchSnapshot(boothId) {
       try {
-        const res = await fetch(`${CDN_BASE}/${boothId}.json`);
+        // 🔽 CRITICAL FIX: Request lowercase filename
+        const res = await fetch(`${CDN_BASE}/${boothId.toLowerCase()}.json`);
         if (!res.ok) throw new Error('Snapshot not found');
         const data = await res.json();
         if (!lastGeneratedAt || data.generatedAt > lastGeneratedAt) {
@@ -440,7 +438,6 @@
         console.warn('Update blocked: readOnly or not logged in');
         return;
       }
-      // Validate parameters
       if (!boothId) {
         console.error('boothId is null or undefined');
         alert('Error: Booth ID is missing.');
