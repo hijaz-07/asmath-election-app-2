@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>Live Voter List · Scalable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+  <title>Live Voter List · Enterprise</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <!-- Firebase Auth SDK -->
@@ -32,7 +32,7 @@
     console.log('✅ Firebase Auth initialized');
   </script>
   <style>
-    /* --- All styles unchanged from previous version --- */
+    /* ========== GLOBAL DESIGN SYSTEM ========== */
     :root {
       --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
       --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
@@ -54,30 +54,19 @@
       padding: 24px 28px; margin-bottom: 24px;
     }
     .main-heading {
-      font-size: clamp(1.5rem, 3vw, 2.2rem);
-      line-height: 1.15;
-      margin-bottom: 10px;
-      background: linear-gradient(135deg, #fff, #cbd5e1);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      text-align: center;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      padding-bottom: 18px;
+      font-size: clamp(1.5rem, 3vw, 2.2rem); line-height: 1.15; margin-bottom: 10px;
+      background: linear-gradient(135deg, #fff, #cbd5e1); -webkit-background-clip: text; background-clip: text;
+      color: transparent; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 18px;
     }
     .booth-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
-    .booth-info h1 {
-      font-size: 1.8rem; background: linear-gradient(135deg, #fff, #cbd5e1);
-      -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 6px;
-    }
+    .booth-info h1 { font-size: 1.8rem; background: linear-gradient(135deg, #fff, #cbd5e1); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 6px; }
     .booth-meta { display: flex; gap: 24px; color: var(--muted); font-size: 1rem; }
     .booth-meta i { margin-right: 6px; color: var(--accent); }
     .action-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
     .btn {
-      border: none; border-radius: 16px; padding: 12px 20px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease; font-size: 0.95rem; background: rgba(255,255,255,0.05); color: #fff;
-      border: 1px solid rgba(255,255,255,0.1); display: inline-flex; align-items: center; gap: 8px;
-      backdrop-filter: blur(8px);
+      border: none; border-radius: 16px; padding: 12px 20px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+      font-size: 0.95rem; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1);
+      display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(8px);
     }
     .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow: 0 8px 20px rgba(56,189,248,0.2); border: none; }
     .btn-outline { background: transparent; border: 1px solid var(--card-border); }
@@ -87,79 +76,93 @@
     .btn-danger:hover { background: rgba(251,113,133,0.15); }
     .btn:disabled { opacity: 0.5; pointer-events: none; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 16px; margin: 20px 0 10px; }
-    .stat-card {
-      background: rgba(15,23,42,0.6); border-radius: 20px; padding: 16px 12px;
-      border: 1px solid rgba(255,255,255,0.06); text-align: center;
-    }
+    .stat-card { background: rgba(15,23,42,0.6); border-radius: 20px; padding: 16px 12px; border: 1px solid rgba(255,255,255,0.06); text-align: center; }
     .stat-value { font-size: 2.2rem; font-weight: 700; line-height: 1.2; }
     .stat-percent { font-size: 0.9rem; font-weight: 400; margin-left: 6px; opacity: 0.8; }
     .stat-label { color: var(--muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
     .stat-our { color: var(--success); } .stat-polled { color: var(--danger); } .stat-ourpolled { color: var(--success); } .stat-balance { color: var(--accent); }
     .controls-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-    .search-wrapper {
-      display: flex; align-items: center; background: rgba(15,23,42,0.6); border-radius: 40px;
-      padding: 4px 4px 4px 18px; border: 1px solid var(--card-border); flex: 1 1 260px;
-    }
+    .search-wrapper { display: flex; align-items: center; background: rgba(15,23,42,0.6); border-radius: 40px; padding: 4px 4px 4px 18px; border: 1px solid var(--card-border); flex: 1 1 260px; }
     .search-wrapper i { color: var(--muted); }
-    .search-wrapper input {
-      background: transparent; border: none; padding: 12px 12px; color: var(--text);
-      font-size: 1rem; width: 100%; outline: none;
-    }
+    .search-wrapper input { background: transparent; border: none; padding: 12px 12px; color: var(--text); font-size: 1rem; width: 100%; outline: none; }
     .filter-group { display: flex; gap: 8px; flex-wrap: wrap; }
-    .filter-btn {
-      padding: 8px 16px; border-radius: 30px; background: rgba(255,255,255,0.03);
-      border: 1px solid var(--card-border); color: var(--muted); cursor: pointer; font-weight: 500; transition: all 0.2s;
-    }
+    .filter-btn { padding: 8px 16px; border-radius: 30px; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); color: var(--muted); cursor: pointer; font-weight: 500; transition: all 0.2s; }
     .filter-btn.active { background: var(--accent); color: #0f172a; border-color: var(--accent); }
-    .voter-table-container {
-      max-height: 600px; overflow-y: auto; border-radius: 20px; background: rgba(0,0,0,0.2);
-      margin-top: 8px; scroll-behavior: smooth;
-    }
+    .voter-table-container { max-height: 600px; overflow-y: auto; border-radius: 20px; background: rgba(0,0,0,0.2); margin-top: 8px; scroll-behavior: smooth; }
     table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-    th {
-      position: sticky; top: 0; background: #1e293b; padding: 16px 12px; text-align: left;
-      color: #cbd5e1; font-weight: 600; backdrop-filter: blur(10px); z-index: 2;
-    }
+    th { position: sticky; top: 0; background: #1e293b; padding: 16px 12px; text-align: left; color: #cbd5e1; font-weight: 600; backdrop-filter: blur(10px); z-index: 2; }
     td { padding: 12px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
     tr.voter-row { cursor: pointer; transition: background 0.15s; }
     tr.voter-row:hover { background: rgba(255,255,255,0.06) !important; }
     tr.voter-row.checked-row { outline: 2px solid var(--accent); outline-offset: -2px; background: rgba(56,189,248,0.15) !important; }
     tr.selected-row { outline: 2px solid var(--accent); outline-offset: -2px; background: rgba(56,189,248,0.15) !important; }
-    .status-badge {
-      display: inline-block; padding: 4px 12px; border-radius: 40px; font-size: 0.8rem;
-      font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
-    }
-    .status-our { background: rgba(37,99,235,0.3); color: #bfdbfe; }
-    .status-polled { background: rgba(220,38,38,0.3); color: #fecaca; }
-    .status-ourpolled { background: rgba(22,163,74,0.3); color: #bbf7d0; }
-    .status-none { color: var(--muted); }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 40px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+    .status-our { background: rgba(37,99,235,0.3); color: #bfdbfe; } .status-polled { background: rgba(220,38,38,0.3); color: #fecaca; }
+    .status-ourpolled { background: rgba(22,163,74,0.3); color: #bbf7d0; } .status-none { color: var(--muted); }
     td.sl-col { font-weight: 600; transition: background 0.2s; }
-    .sl-our { background-color: var(--our-highlight) !important; color: white; }
-    .sl-polled { background-color: var(--polled-highlight) !important; color: white; }
+    .sl-our { background-color: var(--our-highlight) !important; color: white; } .sl-polled { background-color: var(--polled-highlight) !important; color: white; }
     .sl-ourpolled { background-color: var(--ourpolled-highlight) !important; color: white; }
     .empty-message { text-align: center; padding: 48px; color: var(--muted); }
     .footer-note { display: flex; justify-content: space-between; margin-top: 16px; color: var(--muted); font-size: 0.85rem; }
-    .readonly-badge {
-      background: var(--warning); color: #0f172a; padding: 4px 12px; border-radius: 40px;
-      font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; margin-left: 12px;
-    }
+    .readonly-badge { background: var(--warning); color: #0f172a; padding: 4px 12px; border-radius: 40px; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; }
     .connection-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #4ade80; margin-right: 8px; box-shadow: 0 0 10px #4ade80; }
     .login-card { max-width: 400px; margin: 0 auto; }
     .login-card h2 { margin-bottom: 16px; font-size: 1.5rem; }
-    .login-card input {
-      width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--card-border);
-      background: rgba(15,23,42,0.6); color: var(--text); font-size: 1rem; margin-bottom: 12px;
-    }
+    .login-card input { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--card-border); background: rgba(15,23,42,0.6); color: var(--text); font-size: 1rem; margin-bottom: 12px; }
     .login-card .btn { width: 100%; justify-content: center; }
-
-    .voter-checkbox {
-      width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer;
-      transform: scale(1.2); margin: 0; vertical-align: middle;
-    }
+    .voter-checkbox { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; transform: scale(1.2); margin: 0; vertical-align: middle; }
     .select-all-checkbox { transform: scale(1.2); accent-color: var(--accent); cursor: pointer; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bg2); color: white; padding: 12px 24px; border-radius: 40px; box-shadow: var(--shadow); z-index: 9999; transition: opacity 0.3s; }
+    .toast.error { background: var(--danger); }
+    .toast.success { background: var(--success); }
 
-    @media (max-width: 768px) { /* ... same as before ... */ }
-    @media (max-width: 480px) { /* ... same as before ... */ }
+    /* ========== MOBILE OPTIMIZATIONS ========== */
+    @media (max-width: 768px) {
+      body { padding: 12px; }
+      .app-container { max-width: 100%; }
+      .glass-card { padding: 18px 16px; border-radius: 24px; margin-bottom: 16px; }
+      .main-heading { font-size: 1.5rem; padding-bottom: 12px; }
+      .booth-header { flex-direction: column; align-items: stretch; gap: 16px; }
+      .booth-info h1 { font-size: 1.5rem; }
+      .booth-meta { flex-wrap: wrap; gap: 12px; font-size: 0.9rem; }
+      .action-buttons { flex-direction: column; width: 100%; }
+      .action-buttons .btn { width: 100%; justify-content: center; padding: 16px 12px; font-size: 1rem; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .stat-card { padding: 12px 8px; }
+      .stat-value { font-size: 1.6rem; }
+      .stat-percent { font-size: 0.75rem; display: block; margin-left: 0; }
+      .stat-label { font-size: 0.75rem; }
+      .controls-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+      .search-wrapper { height: 36px; padding: 2px 2px 2px 10px; border-radius: 30px; align-items: center; }
+      .search-wrapper i { font-size: 0.85rem; margin-right: 4px; }
+      .search-wrapper input { height: 100%; padding: 0 6px; font-size: 0.9rem; line-height: 1; }
+      .filter-group { justify-content: center; }
+      .filter-btn { padding: 8px 12px; font-size: 0.85rem; flex: 1 0 auto; }
+      .voter-actions { flex-wrap: wrap; }
+      .voter-actions .btn { flex: 1 1 calc(50% - 8px); padding: 14px 8px; font-size: 0.9rem; }
+      #selectedInfo { width: 100%; text-align: center; margin-left: 0 !important; margin-top: 8px; }
+      .voter-table-container { max-height: 450px; }
+      table { font-size: 0.85rem; }
+      th, td { padding: 12px 8px; }
+      th:first-child, td:first-child { padding: 8px 4px; width: 40px; }
+      .voter-checkbox { transform: scale(1); }
+      @media (max-width: 480px) {
+        th:nth-child(4), td:nth-child(4) { display: none; }
+      }
+      .login-card { max-width: 100%; margin: 0; }
+      .login-card h2 { font-size: 1.3rem; }
+      .login-card input { padding: 16px; font-size: 16px; }
+      .footer-note { flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+      .readonly-badge { margin-left: 0; margin-top: 8px; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .booth-meta { flex-direction: column; gap: 6px; }
+      .filter-btn { font-size: 0.8rem; padding: 6px 10px; }
+      .btn { padding: 14px 10px; }
+      .search-wrapper { height: 32px; padding: 2px 2px 2px 8px; }
+      .search-wrapper input { font-size: 0.85rem; padding: 0 4px; }
+    }
   </style>
 </head>
 <body>
@@ -242,154 +245,148 @@
 </div>
 
 <script>
-  (function initWhenReady() {
-    if (!window.auth) { setTimeout(initWhenReady, 50); return; }
-    console.log('🚀 Starting app (Polling Editor Mode)');
+  (function() {
+    // ---------- GLOBAL STATE & DEPENDENCIES ----------
+    if (!window.auth) { setTimeout(arguments.callee, 50); return; }
+    console.log('🚀 Enterprise Election Suite Initialized');
     
     const auth = window.auth;
     const onAuthStateChanged = window.firebaseOnAuthStateChanged;
     const signIn = window.firebaseSignIn;
     const signOutUser = window.firebaseSignOut;
 
+    // ---------- DOM REFERENCES ----------
+    const $ = id => document.getElementById(id);
+    const displayAssembly = $('displayAssembly'), displayBooth = $('displayBooth'), displayTotal = $('displayTotal');
+    const statsContainer = $('statsContainer'), tbody = $('voterTableBody'), searchInput = $('searchInput');
+    const filterBtns = document.querySelectorAll('.filter-btn'), selectedInfo = $('selectedInfo');
+    const readonlyIndicator = $('readonlyIndicator'), loginCard = $('loginCard'), voterCard = $('voterCard');
+    const loginEmail = $('loginEmail'), loginPassword = $('loginPassword'), loginBtn = $('loginBtn'), loginError = $('loginError');
+    const logoutBtn = $('logoutBtn'), backBtn = $('backToBoothBtn'), shareViewLinkBtn = $('shareViewLinkBtn');
+    const resetAllBtn = $('resetAllBtn'), markOurBtn = $('markOurBtn'), markPolledBtn = $('markPolledBtn');
+    const removeStatusBtn = $('removeStatusBtn'), deselectAllBtn = $('deselectAllBtn'), selectAllCheckbox = $('selectAllCheckbox');
+
+    // ---------- CONSTANTS ----------
+    const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
+    const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
+    const FIREBASE_DB_URL = 'https://asmath-election-web-app-default-rtdb.firebaseio.com';
+    
+    // ---------- STATE ----------
+    let voters = [], totalVoters = 0, currentUser = null, isReadOnly = false;
+    let selectedIndices = new Set(), singleSelectedIndex = -1, currentFilter = 'all', searchTerm = '';
+    let pollInterval = null, lastGeneratedAt = null, boothId = null;
+    let optimisticRollbackMap = new Map(); // index -> previous status for rollback
+
+    // ---------- URL PARAMETERS ----------
     const urlParams = new URLSearchParams(window.location.search);
-    let boothId = urlParams.get('booth');
-    if (!boothId) {
-      alert('No booth specified. Returning to setup.');
-      window.location.href = 'index.html';
-      return;
-    }
+    boothId = urlParams.get('booth');
+    if (!boothId) { alert('No booth specified.'); window.location.href = 'index.html'; return; }
     boothId = decodeURIComponent(boothId);
     console.log('📋 Booth ID:', boothId);
 
     const mode = urlParams.get('mode') || 'edit';
-    const totalParam = urlParams.get('total');
-    const assemblyParam = urlParams.get('assembly');
-    const boothNoParam = urlParams.get('boothNo');
-
-    let totalVoters = totalParam ? parseInt(totalParam) : 0;
-    let boothData = { assemblyName: assemblyParam || 'Unknown', boothNo: boothNoParam || '0', votersCount: totalVoters };
-
-    const displayAssembly = document.getElementById('displayAssembly');
-    const displayBooth = document.getElementById('displayBooth');
-    const displayTotal = document.getElementById('displayTotal');
-    const statsContainer = document.getElementById('statsContainer');
-    const tbody = document.getElementById('voterTableBody');
-    const searchInput = document.getElementById('searchInput');
-    const filterBtns = document.querySelectorAll('.filter-btn');
-    const selectedInfo = document.getElementById('selectedInfo');
-    const readonlyIndicator = document.getElementById('readonlyIndicator');
-    const loginCard = document.getElementById('loginCard');
-    const voterCard = document.getElementById('voterCard');
-    const loginEmail = document.getElementById('loginEmail');
-    const loginPassword = document.getElementById('loginPassword');
-    const loginBtn = document.getElementById('loginBtn');
-    const loginError = document.getElementById('loginError');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const backBtn = document.getElementById('backToBoothBtn');
-    const shareViewLinkBtn = document.getElementById('shareViewLinkBtn');
-    const resetAllBtn = document.getElementById('resetAllBtn');
-    const markOurBtn = document.getElementById('markOurBtn');
-    const markPolledBtn = document.getElementById('markPolledBtn');
-    const removeStatusBtn = document.getElementById('removeStatusBtn');
-    const deselectAllBtn = document.getElementById('deselectAllBtn');
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-
-    let voters = [];
-    let selectedIndices = new Set();
-    let singleSelectedIndex = -1;
-    let currentFilter = 'all';
-    let searchTerm = '';
-    let isReadOnly = (mode === 'view');
-    let currentUser = null;
-    let pollInterval = null;
-    let lastGeneratedAt = null;
-
-    // ✅ YOUR ACTUAL URLs
-    const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
-    const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
-    const FIREBASE_DB_URL = 'https://asmath-election-web-app-default-rtdb.firebaseio.com';
-
+    isReadOnly = (mode === 'view');
+    totalVoters = parseInt(urlParams.get('total')) || 0;
+    const boothData = { 
+      assemblyName: urlParams.get('assembly') || 'Unknown', 
+      boothNo: urlParams.get('boothNo') || '0', 
+      votersCount: totalVoters 
+    };
+    
     displayAssembly.textContent = boothData.assemblyName;
     displayBooth.textContent = boothData.boothNo;
     displayTotal.textContent = totalVoters;
 
-    // ---------- Ensure Booth Exists in Firebase ----------
-    async function ensureBoothExists(boothId, boothData, totalVoters) {
-      const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`);
-      const existing = await checkRes.json();
-      if (existing) {
-        console.log('✅ Booth already exists:', boothId);
-        return;
-      }
-      console.log('📝 Creating booth in Firebase:', boothId);
-      const boothPayload = {
-        assemblyName: boothData.assemblyName,
-        boothNo: boothData.boothNo,
-        votersCount: totalVoters
-      };
-      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`, {
-        method: 'PUT',
-        body: JSON.stringify(boothPayload)
-      });
-      const votersPayload = {};
-      for (let i = 0; i < totalVoters; i++) {
-        votersPayload[i] = { status: '', updatedAt: null };
-      }
-      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}/voters.json`, {
-        method: 'PUT',
-        body: JSON.stringify(votersPayload)
-      });
-      console.log('✅ Booth created successfully');
+    // ---------- UTILITY: Toast Notifications ----------
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
     }
 
-    onAuthStateChanged(auth, async (user) => {
-      currentUser = user;
-      const needsAuth = !isReadOnly && !user;
-      if (needsAuth) {
-        loginCard.style.display = 'block';
-        voterCard.style.display = 'none';
-        logoutBtn.style.display = 'none';
-      } else {
-        loginCard.style.display = 'none';
-        voterCard.style.display = 'block';
-        logoutBtn.style.display = (user && !isReadOnly) ? 'inline-flex' : 'none';
-        
-        if (!isReadOnly && user) {
-          await ensureBoothExists(boothId, boothData, totalVoters);
+    // ---------- OPTIMISTIC UI HELPERS ----------
+    function applyOptimisticUpdate(indices, newStatusResolver) {
+      for (const idx of indices) {
+        if (voters[idx]) {
+          const oldStatus = voters[idx].status || '';
+          optimisticRollbackMap.set(idx, oldStatus);
+          voters[idx].status = newStatusResolver(oldStatus);
+          voters[idx].updatedAt = new Date().toISOString();
         }
-        
-        startPolling(boothId);
       }
-      applyReadOnlyMode();
-    });
+      renderTable();
+    }
 
-    loginBtn.addEventListener('click', async () => {
-      const email = loginEmail.value.trim();
-      const password = loginPassword.value;
-      if (!email || !password) {
-        loginError.textContent = 'Please enter both email and password.';
-        return;
+    function rollbackOptimisticUpdate(indices) {
+      for (const idx of indices) {
+        if (voters[idx] && optimisticRollbackMap.has(idx)) {
+          voters[idx].status = optimisticRollbackMap.get(idx);
+        }
       }
+      optimisticRollbackMap.clear();
+      renderTable();
+      showToast('Update failed, reverted.', 'error');
+    }
+
+    // ---------- API: Ensure Booth Exists ----------
+    async function ensureBoothExists() {
+      const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`);
+      if ((await checkRes.json())) return;
+      
+      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`, {
+        method: 'PUT',
+        body: JSON.stringify({ assemblyName: boothData.assemblyName, boothNo: boothData.boothNo, votersCount: totalVoters })
+      });
+      const votersPayload = {};
+      for (let i = 0; i < totalVoters; i++) votersPayload[i] = { status: '', updatedAt: null };
+      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}/voters.json`, { method: 'PUT', body: JSON.stringify(votersPayload) });
+      console.log('✅ Booth created');
+    }
+
+    // ---------- API: Update Voter (Background) ----------
+    async function updateVoterStatus(index, newStatus) {
+      if (isReadOnly || !currentUser) return;
       try {
-        await signIn(auth, email, password);
-        loginError.textContent = '';
-        loginEmail.value = '';
-        loginPassword.value = '';
+        const res = await fetch(UPDATE_WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boothId, voterIndex: index, newStatus })
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
+        optimisticRollbackMap.delete(index);
+        return true;
       } catch (error) {
-        loginError.textContent = error.message;
+        console.error('Update error:', error);
+        return false;
       }
-    });
+    }
 
-    logoutBtn.addEventListener('click', async () => {
-      if (confirm('Are you sure you want to log out?')) {
-        await signOutUser(auth);
+    // ---------- CORE: Bulk Update with Optimistic Rollback ----------
+    async function bulkUpdateStatus(indices, newStatusResolver) {
+      if (isReadOnly || !currentUser || indices.length === 0) return;
+      
+      applyOptimisticUpdate(indices, newStatusResolver);
+      
+      const results = await Promise.all(indices.map(idx => {
+        const cur = voters[idx]?.status || '';
+        return updateVoterStatus(idx, newStatusResolver(cur));
+      }));
+      
+      if (results.some(success => !success)) {
+        rollbackOptimisticUpdate(indices);
+      } else {
+        optimisticRollbackMap.clear();
+        // Force a snapshot fetch after 2s to confirm server state
+        setTimeout(() => fetchSnapshot(boothId), 2000);
       }
-    });
+    }
 
-    // ---------- Polling for Snapshot ----------
-    async function fetchSnapshot(boothId) {
+    // ---------- DATA FETCHING & POLLING ----------
+    async function fetchSnapshot(id) {
       try {
-        const res = await fetch(`${CDN_BASE}/${boothId.toLowerCase()}.json`);
+        const res = await fetch(`${CDN_BASE}/${id.toLowerCase()}.json`);
         if (!res.ok) throw new Error('Snapshot not found');
         const data = await res.json();
         if (!lastGeneratedAt || data.generatedAt > lastGeneratedAt) {
@@ -406,84 +403,13 @@
       }
     }
 
-    function startPolling(boothId) {
+    function startPolling(id) {
       if (pollInterval) clearInterval(pollInterval);
-      fetchSnapshot(boothId);
-      const intervalMs = isReadOnly ? 10000 : 5000;
-      pollInterval = setInterval(() => fetchSnapshot(boothId), intervalMs);
+      fetchSnapshot(id);
+      pollInterval = setInterval(() => fetchSnapshot(id), isReadOnly ? 10000 : 5000);
     }
 
-    function stopPolling() {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = null;
-      }
-    }
-
-    window.addEventListener('beforeunload', stopPolling);
-    window.addEventListener('pagehide', stopPolling);
-
-    // ---------- Voter Update via HTTP POST ----------
-    async function updateVoterStatus(index, newStatus) {
-      if (isReadOnly || !currentUser) {
-        console.warn('Update blocked: readOnly or not logged in');
-        return;
-      }
-      if (!boothId) {
-        console.error('boothId is null or undefined');
-        alert('Error: Booth ID is missing.');
-        return;
-      }
-      if (index === undefined || index === null) {
-        console.error('voterIndex is undefined');
-        alert('Error: Voter index is missing.');
-        return;
-      }
-      console.log(`📤 Updating booth ${boothId}, voter ${index} to "${newStatus}"`);
-      
-      try {
-        const res = await fetch(UPDATE_WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ boothId, voterIndex: index, newStatus })
-        });
-        const result = await res.json();
-        if (!res.ok) {
-          throw new Error(result.error || 'Update failed');
-        }
-        console.log('✅ Update successful:', result);
-      } catch (error) {
-        console.error('Update error:', error);
-        alert('Failed to update voter: ' + error.message);
-      }
-    }
-
-    async function bulkUpdateStatus(indices, newStatusResolver) {
-      if (isReadOnly || !currentUser || indices.length === 0) return;
-
-      // Optimistic UI update: apply changes to local voters array immediately
-      for (const idx of indices) {
-        if (voters[idx]) {
-          const cur = voters[idx].status || '';
-          const newStatus = newStatusResolver(cur);
-          voters[idx].status = newStatus;
-          voters[idx].updatedAt = new Date().toISOString();
-        }
-      }
-      // Re-render table instantly so the user sees the change
-      renderTable();
-
-      // Send updates to the Worker in the background (does not block UI)
-      for (const idx of indices) {
-        const cur = voters[idx]?.status || '';
-        const newStatus = newStatusResolver(cur);
-        await updateVoterStatus(idx, newStatus).catch(e => {
-          console.warn('Background sync failed for voter', idx, e);
-        });
-      }
-    }
-
-    // ---------- Stats & Rendering ----------
+    // ---------- RENDERING ENGINE ----------
     function computeStats() {
       let our = 0, polled = 0, ourPolled = 0;
       voters.forEach(v => {
@@ -492,18 +418,14 @@
         else if (v.status === 'ourpolled') ourPolled++;
       });
       return {
-        our: our + ourPolled,
-        polled: polled + ourPolled,
-        ourPolled,
-        ourBalance: our,
-        totalBalance: totalVoters - (polled + ourPolled),
-        totalVoters
+        our: our + ourPolled, polled: polled + ourPolled, ourPolled,
+        ourBalance: our, totalBalance: totalVoters - (polled + ourPolled), totalVoters
       };
     }
 
     function renderStats() {
       const s = computeStats();
-      const p = (v) => totalVoters ? ((v/totalVoters)*100).toFixed(1)+'%' : '0.0%';
+      const p = v => totalVoters ? ((v/totalVoters)*100).toFixed(1)+'%' : '0.0%';
       statsContainer.innerHTML = `
         <div class="stat-card"><div class="stat-value stat-our">${s.our}<span class="stat-percent">${p(s.our)}</span></div><div class="stat-label">Our Votes</div></div>
         <div class="stat-card"><div class="stat-value stat-polled">${s.polled}<span class="stat-percent">${p(s.polled)}</span></div><div class="stat-label">Total Polled</div></div>
@@ -524,168 +446,154 @@
     }
 
     function renderTable() {
-      if (!voters.length) {
-        tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>`;
-        renderStats();
-        return;
-      }
+      if (!voters.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>`; renderStats(); return; }
       const filtered = getFilteredVoters();
-      if (!filtered.length) {
-        tbody.innerHTML = `<tr><td colspan="4" class="empty-message">No voters match</td></tr>`;
-      } else {
-        const allFilteredIndices = filtered.map(item => item.originalIndex);
-        const isAllSelected = allFilteredIndices.length > 0 && allFilteredIndices.every(idx => selectedIndices.has(idx));
-        selectAllCheckbox.checked = isAllSelected;
-        selectAllCheckbox.indeterminate = !isAllSelected && allFilteredIndices.some(idx => selectedIndices.has(idx));
+      if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">No voters match</td></tr>`; renderStats(); return; }
+      
+      const allFilteredIndices = filtered.map(item => item.originalIndex);
+      const isAllSelected = allFilteredIndices.length > 0 && allFilteredIndices.every(idx => selectedIndices.has(idx));
+      selectAllCheckbox.checked = isAllSelected;
+      selectAllCheckbox.indeterminate = !isAllSelected && allFilteredIndices.some(idx => selectedIndices.has(idx));
 
-        tbody.innerHTML = filtered.map(item => {
-          const idx = item.originalIndex, s = item.status;
-          const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
-          const statusClass = s ? `status-${s}` : 'status-none', statusDisplay = s ? s.toUpperCase() : '—';
-          const isChecked = selectedIndices.has(idx);
-          const isSingleSelected = (singleSelectedIndex === idx && selectedIndices.size === 0);
-          const rowClass = isChecked ? 'voter-row checked-row' : (isSingleSelected ? 'voter-row selected-row' : 'voter-row');
-          let slClass = 'sl-col';
-          if (s === 'our') slClass += ' sl-our';
-          else if (s === 'polled') slClass += ' sl-polled';
-          else if (s === 'ourpolled') slClass += ' sl-ourpolled';
-          return `<tr class="${rowClass}" data-index="${idx}">
-            <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''}></td>
-            <td class="${slClass}">${idx+1}</td>
-            <td><span class="status-badge ${statusClass}">${statusDisplay}</span></td>
-            <td>${updated}</td>
-          </tr>`;
-        }).join('');
-      }
-      if (selectedIndices.size > 0) {
-        selectedInfo.textContent = `${selectedIndices.size} voter(s) selected`;
-      } else if (singleSelectedIndex !== -1) {
-        selectedInfo.textContent = `Selected: Voter #${singleSelectedIndex+1} (${voters[singleSelectedIndex]?.status || 'unmarked'})`;
-      } else {
-        selectedInfo.textContent = 'No voter selected';
-      }
+      tbody.innerHTML = filtered.map(item => {
+        const idx = item.originalIndex, s = item.status;
+        const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+        const isChecked = selectedIndices.has(idx);
+        const isSingle = (singleSelectedIndex === idx && selectedIndices.size === 0);
+        const rowClass = `voter-row ${isChecked ? 'checked-row' : (isSingle ? 'selected-row' : '')}`;
+        let slClass = 'sl-col';
+        if (s === 'our') slClass += ' sl-our';
+        else if (s === 'polled') slClass += ' sl-polled';
+        else if (s === 'ourpolled') slClass += ' sl-ourpolled';
+        return `<tr class="${rowClass}" data-index="${idx}">
+          <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''}></td>
+          <td class="${slClass}">${idx+1}</td>
+          <td><span class="status-badge status-${s || 'none'}">${s ? s.toUpperCase() : '—'}</span></td>
+          <td>${updated}</td>
+        </tr>`;
+      }).join('');
+      
+      selectedInfo.textContent = selectedIndices.size ? `${selectedIndices.size} voter(s) selected` :
+                                 (singleSelectedIndex !== -1 ? `Selected: Voter #${singleSelectedIndex+1}` : 'No voter selected');
       renderStats();
     }
 
     function applyReadOnlyMode() {
       const canEdit = !isReadOnly && currentUser;
       readonlyIndicator.style.display = isReadOnly ? 'inline-flex' : 'none';
-      markOurBtn.disabled = markPolledBtn.disabled = removeStatusBtn.disabled = resetAllBtn.disabled = !canEdit;
-      deselectAllBtn.disabled = !canEdit;
-      selectAllCheckbox.disabled = !canEdit;
+      [markOurBtn, markPolledBtn, removeStatusBtn, resetAllBtn].forEach(b => b.disabled = !canEdit);
+      deselectAllBtn.disabled = selectAllCheckbox.disabled = !canEdit;
       document.querySelectorAll('.voter-checkbox').forEach(cb => cb.disabled = !canEdit);
       backBtn.textContent = isReadOnly ? 'Back to Setup' : 'Change Booth';
     }
 
     function getActionIndices() {
-      if (selectedIndices.size > 0) return Array.from(selectedIndices);
-      if (singleSelectedIndex !== -1) return [singleSelectedIndex];
-      return [];
+      return selectedIndices.size ? Array.from(selectedIndices) : (singleSelectedIndex !== -1 ? [singleSelectedIndex] : []);
     }
 
     async function performAction(statusResolver) {
       const indices = getActionIndices();
-      console.log('🎯 Action indices:', indices);
-      if (indices.length === 0) {
-        alert('Please select at least one voter (use checkboxes or click a row).');
-        return;
-      }
+      if (!indices.length) { alert('Select at least one voter.'); return; }
       const filtered = getFilteredVoters();
-      const totalInView = filtered.length;
-      const allSelected = (indices.length === totalInView && totalInView > 0);
-      if (allSelected) {
-        const confirmMsg = `⚠️ You are about to update ALL ${totalInView} voters in the current view.\n\nThis action cannot be undone. Continue?`;
-        if (!confirm(confirmMsg)) return;
+      if (indices.length === filtered.length && filtered.length > 0) {
+        if (!confirm(`⚠️ Update ALL ${filtered.length} voters?`)) return;
       }
       await bulkUpdateStatus(indices, statusResolver);
-      
-      // ✅ FIX: Clear selections AND re-render the table
       selectedIndices.clear();
       singleSelectedIndex = -1;
       renderTable();
-      
-      // Do NOT call fetchSnapshot here to avoid overwriting optimistic UI
     }
 
-    // Event Listeners
-    tbody.addEventListener('change', (e) => {
-      if (e.target.classList.contains('voter-checkbox')) {
-        const idx = parseInt(e.target.dataset.index);
-        e.target.checked ? selectedIndices.add(idx) : selectedIndices.delete(idx);
+    // ---------- EVENT LISTENERS ----------
+    function setupEventListeners() {
+      tbody.addEventListener('change', e => {
+        if (e.target.classList.contains('voter-checkbox')) {
+          const idx = +e.target.dataset.index;
+          e.target.checked ? selectedIndices.add(idx) : selectedIndices.delete(idx);
+          singleSelectedIndex = -1;
+          renderTable();
+        }
+      });
+      selectAllCheckbox.addEventListener('change', e => {
+        const filtered = getFilteredVoters();
+        filtered.forEach(item => e.target.checked ? selectedIndices.add(item.originalIndex) : selectedIndices.delete(item.originalIndex));
         singleSelectedIndex = -1;
         renderTable();
+      });
+      deselectAllBtn.addEventListener('click', () => { selectedIndices.clear(); singleSelectedIndex = -1; renderTable(); });
+      tbody.addEventListener('click', e => {
+        if (e.target.type === 'checkbox' || isReadOnly || !currentUser) return;
+        const row = e.target.closest('tr.voter-row');
+        if (!row || selectedIndices.size) return;
+        singleSelectedIndex = +row.dataset.index;
+        renderTable();
+      });
+      tbody.addEventListener('dblclick', e => {
+        if (isReadOnly || !currentUser) return;
+        const row = e.target.closest('tr.voter-row');
+        if (!row || selectedIndices.size) return;
+        const idx = +row.dataset.index;
+        const cur = voters[idx]?.status || '';
+        const newStatus = cur === 'our' ? '' : (cur === 'polled' ? 'ourpolled' : (cur === 'ourpolled' ? 'polled' : 'our'));
+        bulkUpdateStatus([idx], () => newStatus);
+        singleSelectedIndex = idx;
+        renderTable();
+      });
+      markOurBtn.addEventListener('click', () => performAction(cur => cur === 'polled' ? 'ourpolled' : 'our'));
+      markPolledBtn.addEventListener('click', () => performAction(cur => cur === 'our' ? 'ourpolled' : 'polled'));
+      removeStatusBtn.addEventListener('click', () => performAction(() => ''));
+      filterBtns.forEach(b => b.addEventListener('click', () => {
+        filterBtns.forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        currentFilter = b.dataset.filter;
+        renderTable();
+      }));
+      searchInput.addEventListener('input', e => { searchTerm = e.target.value; renderTable(); });
+      resetAllBtn.addEventListener('click', async () => {
+        if (isReadOnly || !currentUser) return;
+        if (!confirm('Reset all voter statuses?')) return;
+        const indices = Array.from({length: totalVoters}, (_,i) => i);
+        await bulkUpdateStatus(indices, () => '');
+      });
+      shareViewLinkBtn.addEventListener('click', () => {
+        const url = `${location.origin}${location.pathname}?booth=${encodeURIComponent(boothId)}&mode=view`;
+        navigator.clipboard.writeText(url).then(() => showToast('📋 Viewer link copied!', 'success')).catch(() => prompt('Copy:', url));
+      });
+      backBtn.addEventListener('click', () => location.href = 'index.html');
+      logoutBtn.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to log out?')) {
+          await signOutUser(auth);
+        }
+      });
+      window.addEventListener('beforeunload', () => { if (pollInterval) clearInterval(pollInterval); });
+      window.addEventListener('pagehide', () => { if (pollInterval) clearInterval(pollInterval); });
+    }
+
+    // ---------- AUTH STATE & INIT ----------
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      const needsAuth = !isReadOnly && !user;
+      loginCard.style.display = needsAuth ? 'block' : 'none';
+      voterCard.style.display = needsAuth ? 'none' : 'block';
+      logoutBtn.style.display = (user && !isReadOnly) ? 'inline-flex' : 'none';
+      
+      if (!needsAuth) {
+        if (!isReadOnly && user) await ensureBoothExists();
+        startPolling(boothId);
       }
+      applyReadOnlyMode();
     });
 
-    selectAllCheckbox.addEventListener('change', (e) => {
-      const filtered = getFilteredVoters();
-      if (e.target.checked) filtered.forEach(item => selectedIndices.add(item.originalIndex));
-      else filtered.forEach(item => selectedIndices.delete(item.originalIndex));
-      singleSelectedIndex = -1;
-      renderTable();
+    loginBtn.addEventListener('click', async () => {
+      const email = loginEmail.value.trim(), password = loginPassword.value;
+      if (!email || !password) { loginError.textContent = 'Please enter both email and password.'; return; }
+      try {
+        await signIn(auth, email, password);
+        loginError.textContent = ''; loginEmail.value = loginPassword.value = '';
+      } catch (error) { loginError.textContent = error.message; }
     });
 
-    deselectAllBtn.addEventListener('click', () => { selectedIndices.clear(); singleSelectedIndex = -1; renderTable(); });
-
-    tbody.addEventListener('click', (e) => {
-      if (e.target.type === 'checkbox') return;
-      if (isReadOnly || !currentUser) return;
-      const row = e.target.closest('tr.voter-row');
-      if (!row) return;
-      const idx = parseInt(row.dataset.index);
-      if (selectedIndices.size > 0) return;
-      singleSelectedIndex = idx;
-      renderTable();
-    });
-
-    tbody.addEventListener('dblclick', (e) => {
-      if (isReadOnly || !currentUser) return;
-      const row = e.target.closest('tr.voter-row');
-      if (!row) return;
-      const idx = parseInt(row.dataset.index);
-      if (selectedIndices.size > 0) return;
-      const cur = voters[idx]?.status;
-      if (cur === 'our') updateVoterStatus(idx, '');
-      else if (cur === 'polled') updateVoterStatus(idx, 'ourpolled');
-      else if (cur === 'ourpolled') updateVoterStatus(idx, 'polled');
-      else updateVoterStatus(idx, 'our');
-      singleSelectedIndex = idx;
-      // For double-click, we can also clear selection after update
-      selectedIndices.clear();
-      singleSelectedIndex = -1;
-      renderTable();
-    });
-
-    markOurBtn.addEventListener('click', () => performAction(cur => cur === 'polled' ? 'ourpolled' : 'our'));
-    markPolledBtn.addEventListener('click', () => performAction(cur => cur === 'our' ? 'ourpolled' : 'polled'));
-    removeStatusBtn.addEventListener('click', () => performAction(() => ''));
-
-    filterBtns.forEach(b => b.addEventListener('click', () => {
-      filterBtns.forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
-      currentFilter = b.dataset.filter;
-      renderTable();
-    }));
-
-    searchInput.addEventListener('input', e => { searchTerm = e.target.value; renderTable(); });
-
-    resetAllBtn.addEventListener('click', async () => {
-      if (isReadOnly || !currentUser) return;
-      if (!confirm('Reset all voter statuses?')) return;
-      for (let i = 0; i < totalVoters; i++) {
-        await updateVoterStatus(i, '');
-      }
-      setTimeout(() => fetchSnapshot(boothId), 2000);
-    });
-
-    shareViewLinkBtn.addEventListener('click', () => {
-      const url = `${location.origin}${location.pathname}?booth=${encodeURIComponent(boothId)}&mode=view`;
-      navigator.clipboard.writeText(url).then(() => alert('📋 Viewer link copied!')).catch(() => prompt('Copy:', url));
-    });
-
-    backBtn.addEventListener('click', () => location.href = 'index.html');
-
-    applyReadOnlyMode();
+    setupEventListeners();
   })();
 </script>
 </body>
