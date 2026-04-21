@@ -1,20 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-<title>Booth Setup · Election Tracker</title>
-<link rel="icon" href="data:,">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<style>
-:root{--bg1:#0f172a;--bg2:#1e293b;--card:rgba(255,255,255,.08);--card-border:rgba(255,255,255,.14);--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--accent2:#8b5cf6;--danger:#fb7185;--success:#34d399;--shadow:0 20px 60px rgba(0,0,0,.35)}
-*{box-sizing:border-box;margin:0;padding:0}
-body{min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:radial-gradient(circle at top left,rgba(56,189,248,.22),transparent 30%),radial-gradient(circle at bottom right,rgba(139,92,246,.2),transparent 28%),linear-gradient(135deg,var(--bg1),var(--bg2));color:var(--text);display:grid;place-items:center;padding:24px}
-.container{width:100%;max-width:560px}.card{background:var(--card);border:1px solid var(--card-border);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:28px;box-shadow:var(--shadow);overflow:hidden}.header{padding:28px 28px 18px;border-bottom:1px solid rgba(255,255,255,.08)}.header h1{font-size:clamp(1.5rem,3vw,2.2rem);line-height:1.15;margin-bottom:10px;background:linear-gradient(135deg,#fff,#cbd5e1);-webkit-background-clip:text;background-clip:text;color:transparent}.header p,.hint,.footer{color:var(--muted)}form{padding:28px;display:grid;gap:18px}.field{display:grid;gap:8px}label{font-size:.95rem;font-weight:600;color:#cbd5e1}input{width:100%;padding:14px 16px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(15,23,42,.6);color:var(--text);outline:none;font-size:1rem;transition:.25s}input::placeholder{color:#64748b}input:focus{border-color:rgba(56,189,248,.9);box-shadow:0 0 0 4px rgba(56,189,248,.15);transform:translateY(-1px)}.error{font-size:.86rem;color:var(--danger);min-height:20px}.actions{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap}.btn{border:none;border-radius:16px;padding:13px 18px;font-weight:600;cursor:pointer;transition:.25s;font-size:.98rem;background:rgba(255,255,255,.05);color:#fff;border:1px solid rgba(255,255,255,.1);display:inline-flex;align-items:center;gap:8px;justify-content:center}.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 12px 30px rgba(56,189,248,.22);border:none}.btn-primary:hover{transform:translateY(-2px);filter:brightness(1.05)}.btn-outline{background:transparent;border:1px solid var(--card-border)}.btn-outline:hover{background:rgba(255,255,255,.08)}.status{font-size:.9rem;color:var(--success);min-height:18px}.footer{padding:0 28px 28px;font-size:.84rem;display:flex;justify-content:space-between}.resume-section{margin:0 28px 20px;padding:16px;background:rgba(56,189,248,0.1);border-radius:16px;border:1px dashed var(--accent)}@media (max-width:520px){.header,form,.footer{padding-left:18px;padding-right:18px}.resume-section{margin-left:18px;margin-right:18px}}
-@media (max-width: 640px) {
-  body{padding:12px}.container{max-width:100%}.card{border-radius:24px}.header h1{font-size:1.5rem}.header p{font-size:.9rem}input{padding:16px;font-size:16px}.btn{padding:16px 18px;font-size:1rem;width:100%}.actions{flex-direction:column-reverse;gap:10px}.footer{flex-direction:column;align-items:center;gap:8px;text-align:center}
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="description" content="Booth setup for election voter status tracking.">
+  <meta name="theme-color" content="#0f172a">
+  <title>Booth Setup · Election Tracker</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    :root {
+      --bg1: #0f172a;
+      --bg2: #1e293b;
+      --card: rgba(15, 23, 42, 0.92);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent2: #8b5cf6;
+      --danger: #fb7185;
+      --success: #34d399;
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "Inter", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.14), transparent 28%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 28px 28px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .header h1 {
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      line-height: 1.15;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-align: center;
+    }
+
+    .header p,
+    .hint,
+    .footer {
+      color: var(--muted);
+    }
+
+    .header p {
+      text-align: center;
+    }
+
+    form {
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text);
+      outline: none;
+      font-size: 1rem;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+    }
+
+    input::placeholder {
+      color: #64748b;
+    }
+
+    input:focus {
+      border-color: rgba(56, 189, 248, 0.9);
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .error {
+      font-size: 0.86rem;
+      color: var(--danger);
+      min-height: 20px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 13px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, filter 0.18s ease;
+      font-size: 0.98rem;
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #0f172a;
+      border-color: transparent;
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.22);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border-color: var(--card-border);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .status {
+      font-size: 0.9rem;
+      color: var(--success);
+      min-height: 18px;
+    }
+
+    .resume-section {
+      margin: 0 28px 20px;
+      padding: 16px;
+      background: rgba(56, 189, 248, 0.1);
+      border-radius: 16px;
+      border: 1px dashed var(--accent);
+    }
+
+    .resume-section .btn {
+      padding: 10px 16px;
+    }
+
+    .resume-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .footer {
+      padding: 0 28px 28px;
+      font-size: 0.84rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 12px;
+      }
+
+      .container {
+        max-width: 100%;
+      }
+
+      .card {
+        border-radius: 24px;
+      }
+
+      .header h1 {
+        font-size: 1.5rem;
+      }
+
+      .header p {
+        font-size: 0.9rem;
+      }
+
+      input {
+        padding: 16px;
+        font-size: 16px;
+      }
+
+      .btn {
+        padding: 16px 18px;
+        font-size: 1rem;
+        width: 100%;
+      }
+
+      .actions {
+        flex-direction: column-reverse;
+        gap: 10px;
+      }
+
+      .header,
+      form,
+      .footer {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
+
+      .resume-section {
+        margin-left: 18px;
+        margin-right: 18px;
+      }
+
+      .footer {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        text-align: center;
+      }
+    }
+  </style>
 </head>
 <body>
 <div class="container"><div class="card">
@@ -22,116 +280,202 @@ body{min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Se
     <h1>TAMIL NADU STATE ASSEMBLY ELECTION</h1>
     <p>Enter booth details to start or join a live session.</p>
   </div>
-  <div id="resumeSection" class="resume-section" style="display: none;">
-    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+  <div id="resumeSection" class="resume-section hidden">
+    <div class="resume-inner">
       <span><i class="fas fa-history" style="margin-right: 8px;"></i><span id="lastBoothLabel"></span></span>
-      <button class="btn btn-outline" id="resumeBtn" style="padding: 10px 16px;"><i class="fas fa-play"></i> Resume</button>
+      <button class="btn btn-outline" id="resumeBtn" type="button"><i class="fas fa-play"></i> Resume</button>
     </div>
   </div>
   <form id="boothForm" novalidate>
     <div class="field">
       <label for="assemblyName">Assembly Name</label>
-      <input id="assemblyName" type="text" placeholder="e.g., Kolathur Assembly" autocomplete="off" />
+      <input id="assemblyName" type="text" placeholder="e.g., Kolathur Assembly" autocomplete="off" spellcheck="false">
       <div class="hint">Official assembly constituency name</div>
       <div class="error" id="assemblyError"></div>
     </div>
     <div class="field">
       <label for="boothNo">Booth No.</label>
-      <input id="boothNo" type="number" placeholder="Booth number" min="1" step="1" />
+      <input id="boothNo" type="number" placeholder="Booth number" min="1" step="1">
       <div class="hint">Positive integer only</div>
       <div class="error" id="boothError"></div>
     </div>
     <div class="field">
       <label for="votersCount">Total No. of Voters</label>
-      <input id="votersCount" type="number" placeholder="Total voters" min="1" step="1" />
+      <input id="votersCount" type="number" placeholder="Total voters" min="1" step="1">
       <div class="hint">Number of registered voters in this booth</div>
       <div class="error" id="votersError"></div>
     </div>
     <div class="actions">
-      <button class="btn btn-outline" type="button" id="resetBtn">Reset</button>
+      <button class="btn btn-outline" type="button" id="resetBtn"><i class="fas fa-undo" aria-hidden="true"></i> Reset</button>
       <button class="btn btn-primary" type="submit">Continue to Voter List →</button>
     </div>
     <div class="status" id="statusMsg"></div>
   </form>
-  <div class="footer"><span>☁️ Data stored in Firebase (cloud)</span><span>v4.0 · Scalable</span></div>
+  <div class="footer">
+    <span><i class="fas fa-cloud" aria-hidden="true"></i> Data stored in Firebase (cloud)</span>
+    <span>v4.0 · Scalable</span>
+  </div>
 </div></div>
+
 <script>
-(()=>{
-  const $=id=>document.getElementById(id),
-        f=$("boothForm"),
-        a=$("assemblyName"),
-        b=$("boothNo"),
-        v=$("votersCount"),
-        ae=$("assemblyError"),
-        be=$("boothError"),
-        ve=$("votersError"),
-        s=$("statusMsg"),
-        clear=()=>[ae,be,ve,s].forEach(x=>x.textContent=""),
-        err=(el,m)=>el.textContent=m;
+  (() => {
+    const $ = (id) => document.getElementById(id);
 
-  const STORAGE_LAST_BOOTH = 'lastBooth';
+    const form = $("boothForm");
+    const assemblyInput = $("assemblyName");
+    const boothInput = $("boothNo");
+    const votersInput = $("votersCount");
+    const assemblyError = $("assemblyError");
+    const boothError = $("boothError");
+    const votersError = $("votersError");
+    const statusMsg = $("statusMsg");
+    const resumeSection = $("resumeSection");
+    const lastBoothLabel = $("lastBoothLabel");
+    const resumeBtn = $("resumeBtn");
+    const resetBtn = $("resetBtn");
 
-  function loadLastBooth() {
-    try {
-      const saved = localStorage.getItem(STORAGE_LAST_BOOTH);
-      if (saved) {
-        const data = JSON.parse(saved);
-        document.getElementById('lastBoothLabel').textContent = 
-          `Last session: ${data.assemblyName}, Booth ${data.boothNo} (${data.votersCount} voters)`;
-        document.getElementById('resumeSection').style.display = 'block';
-        a.value = data.assemblyName || '';
-        b.value = data.boothNo || '';
-        v.value = data.votersCount || '';
-      }
-    } catch(e) {}
-  }
+    const STORAGE_KEY = "lastBooth";
 
-  function saveLastBooth(assembly, booth, count) {
-    const data = { assemblyName: assembly, boothNo: booth, votersCount: count };
-    localStorage.setItem(STORAGE_LAST_BOOTH, JSON.stringify(data));
-  }
-
-  loadLastBooth();
-
-  [a,b,v].forEach(i=>i.oninput=()=>clear());
-  $("resetBtn").onclick=()=>{f.reset();clear();};
-
-  $("resumeBtn").addEventListener('click', () => {
-    const assembly = a.value.trim();
-    const booth = +b.value.trim();
-    const count = +v.value.trim();
-    if (!assembly || !booth || !count) {
-      alert('Please fill in all fields first.');
-      return;
+    function clearErrors() {
+      assemblyError.textContent = "";
+      boothError.textContent = "";
+      votersError.textContent = "";
+      statusMsg.textContent = "";
     }
-    const boothId = `${assembly.replace(/\s+/g, '-')}_${booth}`;
-    saveLastBooth(assembly, booth, count);
-    window.location.href = `main.html?booth=${encodeURIComponent(boothId)}&mode=edit&total=${count}&assembly=${encodeURIComponent(assembly)}&boothNo=${booth}`;
-  });
 
-  f.onsubmit=e=>{
-    e.preventDefault();
-    clear();
-    const assembly=a.value.trim(),
-          booth=+b.value.trim(),
-          count=+v.value.trim();
-    let ok=true;
+    function setError(el, msg) {
+      el.textContent = msg;
+    }
 
-    if(!assembly) err(ae,"Assembly name is required."),ok=false;
-    else if(assembly.length<3) err(ae,"Enter a valid assembly name (min 3 characters)."),ok=false;
+    function loadLastBooth() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          return;
+        }
 
-    if(!Number.isInteger(booth)||booth<=0) err(be,"Booth number must be a positive whole number."),ok=false;
+        const data = JSON.parse(raw);
+        if (!data || !data.assemblyName || !data.boothNo || !data.votersCount) {
+          return;
+        }
 
-    if(!Number.isInteger(count)||count<=0) err(ve,"Voter count must be a positive whole number."),ok=false;
-    else if(count>5000&&!confirm(`You entered ${count} voters. Is that correct?`)) ok=false;
+        lastBoothLabel.textContent = `Last session: ${data.assemblyName}, Booth ${data.boothNo} (${data.votersCount} voters)`;
+        resumeSection.classList.remove("hidden");
 
-    if(!ok) return;
+        if (!assemblyInput.value) {
+          assemblyInput.value = data.assemblyName;
+        }
+        if (!boothInput.value) {
+          boothInput.value = data.boothNo;
+        }
+        if (!votersInput.value) {
+          votersInput.value = data.votersCount;
+        }
+      } catch (_error) {
+        /* ignore corrupt localStorage */
+      }
+    }
 
-    const boothId = `${assembly.replace(/\s+/g, '-')}_${booth}`;
-    saveLastBooth(assembly, booth, count);
-    window.location.href = `main.html?booth=${encodeURIComponent(boothId)}&mode=edit&total=${count}&assembly=${encodeURIComponent(assembly)}&boothNo=${booth}`;
-  };
-})();
+    function saveLastBooth(assembly, booth, count) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          assemblyName: assembly,
+          boothNo: booth,
+          votersCount: count
+        }));
+      } catch (_error) {
+        /* storage full or blocked */
+      }
+    }
+
+    function navigateToBooth(assembly, booth, count) {
+      const boothId = `${assembly.replace(/\s+/g, "-")}_${booth}`;
+      saveLastBooth(assembly, booth, count);
+
+      const url = new URL("main.html", window.location.href);
+      url.searchParams.set("booth", boothId);
+      url.searchParams.set("mode", "edit");
+      url.searchParams.set("total", String(count));
+      url.searchParams.set("assembly", assembly);
+      url.searchParams.set("boothNo", String(booth));
+      window.location.href = url.toString();
+    }
+
+    function parsePositiveInt(value) {
+      const n = Number.parseInt(value, 10);
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    }
+
+    function validateAndSubmit() {
+      clearErrors();
+
+      const assembly = assemblyInput.value.trim();
+      const booth = parsePositiveInt(boothInput.value);
+      const count = parsePositiveInt(votersInput.value);
+      let valid = true;
+
+      if (!assembly) {
+        setError(assemblyError, "Assembly name is required.");
+        valid = false;
+      } else if (assembly.length < 3) {
+        setError(assemblyError, "Enter a valid assembly name (min 3 characters).");
+        valid = false;
+      }
+
+      if (!booth) {
+        setError(boothError, "Booth number must be a positive whole number.");
+        valid = false;
+      }
+
+      if (!count) {
+        setError(votersError, "Voter count must be a positive whole number.");
+        valid = false;
+      } else if (count > 5000 && !confirm(`You entered ${count} voters. Is that correct?`)) {
+        valid = false;
+      }
+
+      if (!valid) {
+        return;
+      }
+
+      navigateToBooth(assembly, booth, count);
+    }
+
+    /* --- Event Listeners --- */
+
+    loadLastBooth();
+
+    [assemblyInput, boothInput, votersInput].forEach((input) => {
+      input.addEventListener("input", clearErrors);
+    });
+
+    resetBtn.addEventListener("click", () => {
+      form.reset();
+      clearErrors();
+      resumeSection.classList.add("hidden");
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (_error) { /* ignore */ }
+    });
+
+    resumeBtn.addEventListener("click", () => {
+      const assembly = assemblyInput.value.trim();
+      const booth = parsePositiveInt(boothInput.value);
+      const count = parsePositiveInt(votersInput.value);
+
+      if (!assembly || !booth || !count) {
+        alert("Please fill in all fields first.");
+        return;
+      }
+
+      navigateToBooth(assembly, booth, count);
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      validateAndSubmit();
+    });
+  })();
 </script>
 </body>
 </html>
