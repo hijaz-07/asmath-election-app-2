@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
   <title>Live Voter List · Scalable</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- Firebase SDK -->
+  <!-- Firebase Auth SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -22,20 +22,14 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
     const auth = getAuth(app);
     
-    window.db = db;
     window.auth = auth;
-    window.firebaseRef = ref;
-    window.firebaseSet = set;
-    window.firebaseUpdate = update;
-    window.firebaseOnValue = onValue;
     window.firebaseSignIn = signInWithEmailAndPassword;
     window.firebaseSignOut = signOut;
     window.firebaseOnAuthStateChanged = onAuthStateChanged;
 
-    console.log('✅ Firebase initialized');
+    console.log('✅ Firebase Auth initialized');
   </script>
   <style>
     :root {
@@ -292,18 +286,19 @@
 
 <script>
   (function initWhenReady() {
-    if (!window.db || !window.auth) { setTimeout(initWhenReady, 50); return; }
-    console.log('🚀 Starting app');
+    if (!window.auth) { setTimeout(initWhenReady, 50); return; }
+    console.log('🚀 Starting app (Polling Editor Mode)');
     
-    const db = window.db; const auth = window.auth;
-    const ref = window.firebaseRef; const set = window.firebaseSet;
-    const update = window.firebaseUpdate; const onValue = window.firebaseOnValue;
+    const auth = window.auth;
     const onAuthStateChanged = window.firebaseOnAuthStateChanged;
-    const signIn = window.firebaseSignIn; const signOutUser = window.firebaseSignOut;
+    const signIn = window.firebaseSignIn;
+    const signOutUser = window.firebaseSignOut;
 
     const urlParams = new URLSearchParams(window.location.search);
-    const boothId = urlParams.get('booth'); const mode = urlParams.get('mode') || 'edit';
-    const totalParam = urlParams.get('total'); const assemblyParam = urlParams.get('assembly');
+    const boothId = urlParams.get('booth');
+    const mode = urlParams.get('mode') || 'edit';
+    const totalParam = urlParams.get('total');
+    const assemblyParam = urlParams.get('assembly');
     const boothNoParam = urlParams.get('boothNo');
 
     let totalVoters = totalParam ? parseInt(totalParam) : 0;
@@ -318,7 +313,6 @@
     const filterBtns = document.querySelectorAll('.filter-btn');
     const selectedInfo = document.getElementById('selectedInfo');
     const readonlyIndicator = document.getElementById('readonlyIndicator');
-    const connectionIndicator = document.getElementById('connectionIndicator');
     const loginCard = document.getElementById('loginCard');
     const voterCard = document.getElementById('voterCard');
     const loginEmail = document.getElementById('loginEmail');
@@ -335,52 +329,57 @@
     const deselectAllBtn = document.getElementById('deselectAllBtn');
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
 
-    let voters = []; 
+    let voters = [];
     let selectedIndices = new Set();
     let singleSelectedIndex = -1;
-    let currentFilter = 'all'; 
+    let currentFilter = 'all';
     let searchTerm = '';
-    let isReadOnly = (mode === 'view'); 
-    let currentUser = null; 
-    let dbRef = null; 
-    let dataListenerUnsubscribe = null;
-    let viewerInterval = null;
+    let isReadOnly = (mode === 'view');
+    let currentUser = null;
+    let pollInterval = null;
     let lastGeneratedAt = null;
 
-    // 🔽 CHANGE THIS TO YOUR GITHUB USERNAME
+    // ✅ YOUR ACTUAL URLs
     const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
+    const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
 
     displayAssembly.textContent = boothData.assemblyName;
     displayBooth.textContent = boothData.boothNo;
     displayTotal.textContent = totalVoters;
 
     if (!boothId) { alert('No booth specified.'); window.location.href = 'index.html'; return; }
-    dbRef = ref(db, `booths/${boothId}`);
 
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
       const needsAuth = !isReadOnly && !user;
       if (needsAuth) {
-        loginCard.style.display = 'block'; voterCard.style.display = 'none'; logoutBtn.style.display = 'none';
+        loginCard.style.display = 'block';
+        voterCard.style.display = 'none';
+        logoutBtn.style.display = 'none';
       } else {
-        loginCard.style.display = 'none'; voterCard.style.display = 'block';
+        loginCard.style.display = 'none';
+        voterCard.style.display = 'block';
         logoutBtn.style.display = (user && !isReadOnly) ? 'inline-flex' : 'none';
-        if (!isReadOnly) {
-          if (!dataListenerUnsubscribe) setupDataListener();
-        } else {
-          startViewerPolling(boothId);
-        }
+        startPolling(boothId);
       }
       applyReadOnlyMode();
     });
 
     loginBtn.addEventListener('click', async () => {
-      const email = loginEmail.value.trim(); const password = loginPassword.value;
-      if (!email || !password) { loginError.textContent = 'Please enter both email and password.'; return; }
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value;
+      if (!email || !password) {
+        loginError.textContent = 'Please enter both email and password.';
+        return;
+      }
       try {
         await signIn(auth, email, password);
-        loginError.textContent = ''; loginEmail.value = ''; loginPassword.value = '';
-      } catch (error) { loginError.textContent = error.message; }
+        loginError.textContent = '';
+        loginEmail.value = '';
+        loginPassword.value = '';
+      } catch (error) {
+        loginError.textContent = error.message;
+      }
     });
 
     logoutBtn.addEventListener('click', async () => {
@@ -389,43 +388,7 @@
       }
     });
 
-    const connectedRef = ref(db, '.info/connected');
-    onValue(connectedRef, (snap) => {
-      connectionIndicator.innerHTML = snap.val() ? `<span class="connection-status"></span> Live` : `<span style="color: var(--danger);">⚠️ Offline</span>`;
-    });
-
-    function setupDataListener() {
-      dataListenerUnsubscribe = onValue(dbRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          if (data.assemblyName) boothData.assemblyName = data.assemblyName;
-          if (data.boothNo) boothData.boothNo = data.boothNo;
-          if (data.votersCount) totalVoters = data.votersCount;
-          displayAssembly.textContent = boothData.assemblyName;
-          displayBooth.textContent = boothData.boothNo;
-          displayTotal.textContent = totalVoters;
-          if (data.voters) {
-            voters = data.voters;
-            if (voters.length !== totalVoters) {
-              voters = Array.from({ length: totalVoters }, (_, i) => voters[i] || { status: '', updatedAt: null });
-              if (!isReadOnly && currentUser) set(ref(db, `booths/${boothId}/voters`), voters);
-            }
-          } else {
-            voters = Array(totalVoters).fill({ status: '', updatedAt: null });
-            if (!isReadOnly && currentUser) set(ref(db, `booths/${boothId}/voters`), voters);
-          }
-        } else {
-          if (!isReadOnly && currentUser) {
-            const init = { ...boothData, voters: Array(totalVoters).fill({ status: '', updatedAt: null }) };
-            set(dbRef, init); voters = init.voters;
-          } else voters = [];
-        }
-        selectedIndices.clear();
-        singleSelectedIndex = -1;
-        renderTable();
-      }, (err) => { console.error(err); tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Error: ${err.message}</td></tr>`; });
-    }
-
+    // ---------- Polling for Snapshot ----------
     async function fetchSnapshot(boothId) {
       try {
         const res = await fetch(`${CDN_BASE}/${boothId}.json`);
@@ -445,42 +408,71 @@
       }
     }
 
-    function startViewerPolling(boothId) {
+    function startPolling(boothId) {
+      if (pollInterval) clearInterval(pollInterval);
       fetchSnapshot(boothId);
-      viewerInterval = setInterval(() => fetchSnapshot(boothId), 10000);
+      const intervalMs = isReadOnly ? 10000 : 5000;
+      pollInterval = setInterval(() => fetchSnapshot(boothId), intervalMs);
     }
 
-    function stopViewerPolling() {
-      if (viewerInterval) clearInterval(viewerInterval);
+    function stopPolling() {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
     }
 
-    window.addEventListener('beforeunload', stopViewerPolling);
+    window.addEventListener('beforeunload', stopPolling);
+    window.addEventListener('pagehide', stopPolling);
 
-    function updateVoterStatus(index, newStatus) {
+    // ---------- Voter Update via HTTP POST ----------
+    async function updateVoterStatus(index, newStatus) {
       if (isReadOnly || !currentUser) return;
-      const updates = {}; updates[`voters/${index}`] = { status: newStatus, updatedAt: new Date().toISOString() };
-      update(dbRef, updates);
+      try {
+        const res = await fetch(UPDATE_WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boothId, voterIndex: index, newStatus })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Update failed');
+        }
+      } catch (error) {
+        alert('Failed to update voter: ' + error.message);
+      }
     }
 
-    function bulkUpdateStatus(indices, newStatusResolver) {
+    async function bulkUpdateStatus(indices, newStatusResolver) {
       if (isReadOnly || !currentUser || indices.length === 0) return;
-      const updates = {};
-      indices.forEach(idx => {
+      for (const idx of indices) {
         const cur = voters[idx]?.status || '';
         const newStatus = newStatusResolver(cur);
-        updates[`voters/${idx}`] = { status: newStatus, updatedAt: new Date().toISOString() };
-      });
-      update(dbRef, updates);
+        await updateVoterStatus(idx, newStatus);
+      }
     }
 
+    // ---------- Stats & Rendering ----------
     function computeStats() {
       let our = 0, polled = 0, ourPolled = 0;
-      voters.forEach(v => { if (v.status === 'our') our++; else if (v.status === 'polled') polled++; else if (v.status === 'ourpolled') ourPolled++; });
-      return { our: our + ourPolled, polled: polled + ourPolled, ourPolled, ourBalance: our, totalBalance: totalVoters - (polled + ourPolled), totalVoters };
+      voters.forEach(v => {
+        if (v.status === 'our') our++;
+        else if (v.status === 'polled') polled++;
+        else if (v.status === 'ourpolled') ourPolled++;
+      });
+      return {
+        our: our + ourPolled,
+        polled: polled + ourPolled,
+        ourPolled,
+        ourBalance: our,
+        totalBalance: totalVoters - (polled + ourPolled),
+        totalVoters
+      };
     }
 
     function renderStats() {
-      const s = computeStats(); const p = (v) => totalVoters ? ((v/totalVoters)*100).toFixed(1)+'%' : '0.0%';
+      const s = computeStats();
+      const p = (v) => totalVoters ? ((v/totalVoters)*100).toFixed(1)+'%' : '0.0%';
       statsContainer.innerHTML = `
         <div class="stat-card"><div class="stat-value stat-our">${s.our}<span class="stat-percent">${p(s.our)}</span></div><div class="stat-label">Our Votes</div></div>
         <div class="stat-card"><div class="stat-value stat-polled">${s.polled}<span class="stat-percent">${p(s.polled)}</span></div><div class="stat-label">Total Polled</div></div>
@@ -501,14 +493,14 @@
     }
 
     function renderTable() {
-      if (!voters.length) { 
-        tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>`; 
-        renderStats(); 
-        return; 
+      if (!voters.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>`;
+        renderStats();
+        return;
       }
       const filtered = getFilteredVoters();
-      if (!filtered.length) { 
-        tbody.innerHTML = `<tr><td colspan="4" class="empty-message">No voters match</td></tr>`; 
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-message">No voters match</td></tr>`;
       } else {
         const allFilteredIndices = filtered.map(item => item.originalIndex);
         const isAllSelected = allFilteredIndices.length > 0 && allFilteredIndices.every(idx => selectedIndices.has(idx));
@@ -522,9 +514,9 @@
           const isChecked = selectedIndices.has(idx);
           const isSingleSelected = (singleSelectedIndex === idx && selectedIndices.size === 0);
           const rowClass = isChecked ? 'voter-row checked-row' : (isSingleSelected ? 'voter-row selected-row' : 'voter-row');
-          let slClass = 'sl-col'; 
-          if (s === 'our') slClass += ' sl-our'; 
-          else if (s === 'polled') slClass += ' sl-polled'; 
+          let slClass = 'sl-col';
+          if (s === 'our') slClass += ' sl-our';
+          else if (s === 'polled') slClass += ' sl-polled';
           else if (s === 'ourpolled') slClass += ' sl-ourpolled';
           return `<tr class="${rowClass}" data-index="${idx}">
             <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''}></td>
@@ -560,7 +552,7 @@
       return [];
     }
 
-    function performAction(statusResolver) {
+    async function performAction(statusResolver) {
       const indices = getActionIndices();
       if (indices.length === 0) {
         alert('Please select at least one voter (use checkboxes or click a row).');
@@ -573,11 +565,13 @@
         const confirmMsg = `⚠️ You are about to update ALL ${totalInView} voters in the current view.\n\nThis action cannot be undone. Continue?`;
         if (!confirm(confirmMsg)) return;
       }
-      bulkUpdateStatus(indices, statusResolver);
+      await bulkUpdateStatus(indices, statusResolver);
       selectedIndices.clear();
       singleSelectedIndex = -1;
+      fetchSnapshot(boothId);
     }
 
+    // Event Listeners
     tbody.addEventListener('change', (e) => {
       if (e.target.classList.contains('voter-checkbox')) {
         const idx = parseInt(e.target.dataset.index);
@@ -600,7 +594,7 @@
     tbody.addEventListener('click', (e) => {
       if (e.target.type === 'checkbox') return;
       if (isReadOnly || !currentUser) return;
-      const row = e.target.closest('tr.voter-row'); 
+      const row = e.target.closest('tr.voter-row');
       if (!row) return;
       const idx = parseInt(row.dataset.index);
       if (selectedIndices.size > 0) return;
@@ -610,7 +604,7 @@
 
     tbody.addEventListener('dblclick', (e) => {
       if (isReadOnly || !currentUser) return;
-      const row = e.target.closest('tr.voter-row'); 
+      const row = e.target.closest('tr.voter-row');
       if (!row) return;
       const idx = parseInt(row.dataset.index);
       if (selectedIndices.size > 0) return;
@@ -620,32 +614,38 @@
       else if (cur === 'ourpolled') updateVoterStatus(idx, 'polled');
       else updateVoterStatus(idx, 'our');
       singleSelectedIndex = idx;
+      fetchSnapshot(boothId);
     });
 
     markOurBtn.addEventListener('click', () => performAction(cur => cur === 'polled' ? 'ourpolled' : 'our'));
     markPolledBtn.addEventListener('click', () => performAction(cur => cur === 'our' ? 'ourpolled' : 'polled'));
     removeStatusBtn.addEventListener('click', () => performAction(() => ''));
 
-    filterBtns.forEach(b => b.addEventListener('click', () => { 
-      filterBtns.forEach(x => x.classList.remove('active')); 
-      b.classList.add('active'); 
-      currentFilter = b.dataset.filter; 
-      renderTable(); 
+    filterBtns.forEach(b => b.addEventListener('click', () => {
+      filterBtns.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      currentFilter = b.dataset.filter;
+      renderTable();
     }));
+
     searchInput.addEventListener('input', e => { searchTerm = e.target.value; renderTable(); });
-    
-    resetAllBtn.addEventListener('click', () => { 
-      if (isReadOnly || !currentUser) return; 
-      if (confirm('Reset all voter statuses?')) 
-        set(ref(db, `booths/${boothId}/voters`), Array(totalVoters).fill({ status: '', updatedAt: null })); 
+
+    resetAllBtn.addEventListener('click', async () => {
+      if (isReadOnly || !currentUser) return;
+      if (!confirm('Reset all voter statuses?')) return;
+      for (let i = 0; i < totalVoters; i++) {
+        await updateVoterStatus(i, '');
+      }
+      fetchSnapshot(boothId);
     });
-    
+
     shareViewLinkBtn.addEventListener('click', () => {
       const url = `${location.origin}${location.pathname}?booth=${encodeURIComponent(boothId)}&mode=view`;
       navigator.clipboard.writeText(url).then(() => alert('📋 Viewer link copied!')).catch(() => prompt('Copy:', url));
     });
-    
+
     backBtn.addEventListener('click', () => location.href = 'index.html');
+
     applyReadOnlyMode();
   })();
 </script>
