@@ -32,7 +32,7 @@
     console.log('✅ Firebase Auth initialized');
   </script>
   <style>
-    /* ========== GLOBAL DESIGN SYSTEM ========== */
+    /* ========== DESIGN SYSTEM (unchanged, kept for consistency) ========== */
     :root {
       --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
       --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
@@ -115,8 +115,7 @@
     .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bg2); color: white; padding: 12px 24px; border-radius: 40px; box-shadow: var(--shadow); z-index: 9999; transition: opacity 0.3s; }
     .toast.error { background: var(--danger); }
     .toast.success { background: var(--success); }
-
-    /* ========== MOBILE OPTIMIZATIONS ========== */
+    /* ========== MOBILE OPTIMIZATIONS (unchanged) ========== */
     @media (max-width: 768px) {
       body { padding: 12px; }
       .app-container { max-width: 100%; }
@@ -246,16 +245,16 @@
 
 <script>
   (function() {
-    // ---------- GLOBAL STATE & DEPENDENCIES ----------
+    "use strict";
+
+    // ---------- DEPENDENCY CHECKS ----------
     if (!window.auth) { setTimeout(arguments.callee, 50); return; }
-    console.log('🚀 Enterprise Election Suite Initialized');
-    
     const auth = window.auth;
     const onAuthStateChanged = window.firebaseOnAuthStateChanged;
     const signIn = window.firebaseSignIn;
     const signOutUser = window.firebaseSignOut;
 
-    // ---------- DOM REFERENCES ----------
+    // ---------- DOM ELEMENTS ----------
     const $ = id => document.getElementById(id);
     const displayAssembly = $('displayAssembly'), displayBooth = $('displayBooth'), displayTotal = $('displayTotal');
     const statsContainer = $('statsContainer'), tbody = $('voterTableBody'), searchInput = $('searchInput');
@@ -270,34 +269,41 @@
     const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
     const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
     const FIREBASE_DB_URL = 'https://asmath-election-web-app-default-rtdb.firebaseio.com';
-    
-    // ---------- STATE ----------
-    let voters = [], totalVoters = 0, currentUser = null, isReadOnly = false;
-    let selectedIndices = new Set(), singleSelectedIndex = -1, currentFilter = 'all', searchTerm = '';
-    let pollInterval = null, lastGeneratedAt = null, boothId = null;
-    let optimisticRollbackMap = new Map(); // index -> previous status for rollback
 
-    // ---------- URL PARAMETERS ----------
+    // ---------- STATE ----------
+    let voters = [];                     // { index, status, updatedAt }
+    let totalVoters = 0;
+    let currentUser = null;
+    let isReadOnly = false;
+    let selectedIndices = new Set();     // indices (original order) currently checked
+    let singleSelectedIndex = -1;        // used only when no checkboxes are ticked
+    let currentFilter = 'all';
+    let searchTerm = '';
+    let pollInterval = null;
+    let lastSnapshotTimestamp = 0;       // numeric timestamp for freshness
+    let boothId = null;
+
+    // For optimistic rollback
+    let pendingRollbackMap = new Map();  // index -> previous status
+
+    // ---------- URL PARSING & VALIDATION ----------
     const urlParams = new URLSearchParams(window.location.search);
     boothId = urlParams.get('booth');
     if (!boothId) { alert('No booth specified.'); window.location.href = 'index.html'; return; }
     boothId = decodeURIComponent(boothId);
-    console.log('📋 Booth ID:', boothId);
-
     const mode = urlParams.get('mode') || 'edit';
     isReadOnly = (mode === 'view');
-    totalVoters = parseInt(urlParams.get('total')) || 0;
-    const boothData = { 
-      assemblyName: urlParams.get('assembly') || 'Unknown', 
-      boothNo: urlParams.get('boothNo') || '0', 
-      votersCount: totalVoters 
-    };
-    
-    displayAssembly.textContent = boothData.assemblyName;
-    displayBooth.textContent = boothData.boothNo;
+    const totalParam = urlParams.get('total');
+    totalVoters = Number.isInteger(parseInt(totalParam)) && parseInt(totalParam) > 0 ? parseInt(totalParam) : 0;
+    if (totalVoters === 0) { alert('Invalid voter count.'); window.location.href = 'index.html'; return; }
+    const assemblyParam = urlParams.get('assembly') || 'Unknown';
+    const boothNoParam = urlParams.get('boothNo') || '0';
+
+    displayAssembly.textContent = assemblyParam;
+    displayBooth.textContent = boothNoParam;
     displayTotal.textContent = totalVoters;
 
-    // ---------- UTILITY: Toast Notifications ----------
+    // ---------- UTILITY: TOAST ----------
     function showToast(message, type = 'info') {
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
@@ -306,12 +312,57 @@
       setTimeout(() => toast.remove(), 3000);
     }
 
+    // ---------- SAFE HTML ESCAPE (XSS PREVENTION) ----------
+    const escapeHtml = (text) => {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
+    // ---------- STOP POLLING ----------
+    function stopPolling() {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }
+
+    // ---------- ENSURE BOOTH EXISTS (FIREBASE REST) ----------
+    async function ensureBoothExists() {
+      const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`);
+      if ((await checkRes.json())) return;
+      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`, {
+        method: 'PUT',
+        body: JSON.stringify({ assemblyName: assemblyParam, boothNo: boothNoParam, votersCount: totalVoters })
+      });
+      const votersPayload = {};
+      for (let i = 0; i < totalVoters; i++) votersPayload[i] = { status: '', updatedAt: null };
+      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}/voters.json`, { method: 'PUT', body: JSON.stringify(votersPayload) });
+    }
+
+    // ---------- UPDATE SINGLE VOTER (WORKER) ----------
+    async function updateVoterStatus(index, newStatus) {
+      if (isReadOnly || !currentUser) return false;
+      try {
+        const res = await fetch(UPDATE_WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ boothId, voterIndex: index, newStatus })
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
+        return true;
+      } catch (error) {
+        console.error('Update error:', error);
+        return false;
+      }
+    }
+
     // ---------- OPTIMISTIC UI HELPERS ----------
     function applyOptimisticUpdate(indices, newStatusResolver) {
       for (const idx of indices) {
         if (voters[idx]) {
           const oldStatus = voters[idx].status || '';
-          optimisticRollbackMap.set(idx, oldStatus);
+          pendingRollbackMap.set(idx, oldStatus);
           voters[idx].status = newStatusResolver(oldStatus);
           voters[idx].updatedAt = new Date().toISOString();
         }
@@ -321,81 +372,58 @@
 
     function rollbackOptimisticUpdate(indices) {
       for (const idx of indices) {
-        if (voters[idx] && optimisticRollbackMap.has(idx)) {
-          voters[idx].status = optimisticRollbackMap.get(idx);
+        if (voters[idx] && pendingRollbackMap.has(idx)) {
+          voters[idx].status = pendingRollbackMap.get(idx);
         }
       }
-      optimisticRollbackMap.clear();
+      pendingRollbackMap.clear();
       renderTable();
-      showToast('Update failed, reverted.', 'error');
+      showToast('Update failed, changes reverted.', 'error');
     }
 
-    // ---------- API: Ensure Booth Exists ----------
-    async function ensureBoothExists() {
-      const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`);
-      if ((await checkRes.json())) return;
-      
-      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`, {
-        method: 'PUT',
-        body: JSON.stringify({ assemblyName: boothData.assemblyName, boothNo: boothData.boothNo, votersCount: totalVoters })
-      });
-      const votersPayload = {};
-      for (let i = 0; i < totalVoters; i++) votersPayload[i] = { status: '', updatedAt: null };
-      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}/voters.json`, { method: 'PUT', body: JSON.stringify(votersPayload) });
-      console.log('✅ Booth created');
-    }
-
-    // ---------- API: Update Voter (Background) ----------
-    async function updateVoterStatus(index, newStatus) {
-      if (isReadOnly || !currentUser) return;
-      try {
-        const res = await fetch(UPDATE_WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ boothId, voterIndex: index, newStatus })
-        });
-        if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
-        optimisticRollbackMap.delete(index);
-        return true;
-      } catch (error) {
-        console.error('Update error:', error);
-        return false;
-      }
-    }
-
-    // ---------- CORE: Bulk Update with Optimistic Rollback ----------
+    // ---------- BULK UPDATE (CORRECTED LOGIC) ----------
     async function bulkUpdateStatus(indices, newStatusResolver) {
       if (isReadOnly || !currentUser || indices.length === 0) return;
-      
+
+      // Store intended new statuses BEFORE mutating local state
+      const intendedStatuses = new Map();
+      for (const idx of indices) {
+        if (voters[idx]) {
+          const oldStatus = voters[idx].status || '';
+          intendedStatuses.set(idx, newStatusResolver(oldStatus));
+        }
+      }
+
+      // Apply optimistic UI
       applyOptimisticUpdate(indices, newStatusResolver);
-      
-      const results = await Promise.all(indices.map(idx => {
-        const cur = voters[idx]?.status || '';
-        return updateVoterStatus(idx, newStatusResolver(cur));
-      }));
-      
+
+      // Send updates in parallel
+      const results = await Promise.all(
+        Array.from(intendedStatuses.entries()).map(([idx, newStatus]) => updateVoterStatus(idx, newStatus))
+      );
+
       if (results.some(success => !success)) {
         rollbackOptimisticUpdate(indices);
       } else {
-        optimisticRollbackMap.clear();
-        // Force a snapshot fetch after 2s to confirm server state
+        pendingRollbackMap.clear();
         setTimeout(() => fetchSnapshot(boothId), 2000);
       }
     }
 
-    // ---------- DATA FETCHING & POLLING ----------
+    // ---------- SNAPSHOT FETCH (FRESHNESS COMPARISON) ----------
     async function fetchSnapshot(id) {
       try {
         const res = await fetch(`${CDN_BASE}/${id.toLowerCase()}.json`);
         if (!res.ok) throw new Error('Snapshot not found');
         const data = await res.json();
-        if (!lastGeneratedAt || data.generatedAt > lastGeneratedAt) {
-          lastGeneratedAt = data.generatedAt;
-          displayAssembly.textContent = data.assemblyName;
-          displayBooth.textContent = data.boothNo;
-          totalVoters = data.votersCount;
+        const snapshotTime = Number(data.generatedAt) || 0;
+        if (snapshotTime > lastSnapshotTimestamp) {
+          lastSnapshotTimestamp = snapshotTime;
+          displayAssembly.textContent = data.assemblyName || assemblyParam;
+          displayBooth.textContent = data.boothNo || boothNoParam;
+          totalVoters = data.votersCount || totalVoters;
           displayTotal.textContent = totalVoters;
-          voters = data.voters || [];
+          voters = (data.voters || []).map((v, idx) => ({ ...v, index: idx }));
           renderTable();
         }
       } catch (error) {
@@ -404,12 +432,12 @@
     }
 
     function startPolling(id) {
-      if (pollInterval) clearInterval(pollInterval);
+      stopPolling();
       fetchSnapshot(id);
       pollInterval = setInterval(() => fetchSnapshot(id), isReadOnly ? 10000 : 5000);
     }
 
-    // ---------- RENDERING ENGINE ----------
+    // ---------- RENDERING ----------
     function computeStats() {
       let our = 0, polled = 0, ourPolled = 0;
       voters.forEach(v => {
@@ -449,13 +477,14 @@
       if (!voters.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>`; renderStats(); return; }
       const filtered = getFilteredVoters();
       if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">No voters match</td></tr>`; renderStats(); return; }
-      
+
       const allFilteredIndices = filtered.map(item => item.originalIndex);
       const isAllSelected = allFilteredIndices.length > 0 && allFilteredIndices.every(idx => selectedIndices.has(idx));
       selectAllCheckbox.checked = isAllSelected;
       selectAllCheckbox.indeterminate = !isAllSelected && allFilteredIndices.some(idx => selectedIndices.has(idx));
 
-      tbody.innerHTML = filtered.map(item => {
+      // Build rows using safe escaping
+      const rowsHtml = filtered.map(item => {
         const idx = item.originalIndex, s = item.status;
         const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
         const isChecked = selectedIndices.has(idx);
@@ -465,14 +494,16 @@
         if (s === 'our') slClass += ' sl-our';
         else if (s === 'polled') slClass += ' sl-polled';
         else if (s === 'ourpolled') slClass += ' sl-ourpolled';
+        const statusDisplay = s ? s.toUpperCase() : '—';
         return `<tr class="${rowClass}" data-index="${idx}">
-          <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''}></td>
+          <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''}></td>
           <td class="${slClass}">${idx+1}</td>
-          <td><span class="status-badge status-${s || 'none'}">${s ? s.toUpperCase() : '—'}</span></td>
-          <td>${updated}</td>
+          <td><span class="status-badge status-${s || 'none'}">${escapeHtml(statusDisplay)}</span></td>
+          <td>${escapeHtml(updated)}</td>
         </tr>`;
       }).join('');
-      
+      tbody.innerHTML = rowsHtml;
+
       selectedInfo.textContent = selectedIndices.size ? `${selectedIndices.size} voter(s) selected` :
                                  (singleSelectedIndex !== -1 ? `Selected: Voter #${singleSelectedIndex+1}` : 'No voter selected');
       renderStats();
@@ -483,7 +514,7 @@
       readonlyIndicator.style.display = isReadOnly ? 'inline-flex' : 'none';
       [markOurBtn, markPolledBtn, removeStatusBtn, resetAllBtn].forEach(b => b.disabled = !canEdit);
       deselectAllBtn.disabled = selectAllCheckbox.disabled = !canEdit;
-      document.querySelectorAll('.voter-checkbox').forEach(cb => cb.disabled = !canEdit);
+      // Checkboxes are already disabled via renderTable template
       backBtn.textContent = isReadOnly ? 'Back to Setup' : 'Change Booth';
     }
 
@@ -507,20 +538,20 @@
     // ---------- EVENT LISTENERS ----------
     function setupEventListeners() {
       tbody.addEventListener('change', e => {
-        if (e.target.classList.contains('voter-checkbox')) {
-          const idx = +e.target.dataset.index;
-          e.target.checked ? selectedIndices.add(idx) : selectedIndices.delete(idx);
-          singleSelectedIndex = -1;
-          renderTable();
-        }
+        if (!e.target.classList.contains('voter-checkbox') || isReadOnly) return;
+        const idx = +e.target.dataset.index;
+        e.target.checked ? selectedIndices.add(idx) : selectedIndices.delete(idx);
+        singleSelectedIndex = -1;
+        renderTable();
       });
       selectAllCheckbox.addEventListener('change', e => {
+        if (isReadOnly) return;
         const filtered = getFilteredVoters();
         filtered.forEach(item => e.target.checked ? selectedIndices.add(item.originalIndex) : selectedIndices.delete(item.originalIndex));
         singleSelectedIndex = -1;
         renderTable();
       });
-      deselectAllBtn.addEventListener('click', () => { selectedIndices.clear(); singleSelectedIndex = -1; renderTable(); });
+      deselectAllBtn.addEventListener('click', () => { if (!isReadOnly) { selectedIndices.clear(); singleSelectedIndex = -1; renderTable(); } });
       tbody.addEventListener('click', e => {
         if (e.target.type === 'checkbox' || isReadOnly || !currentUser) return;
         const row = e.target.closest('tr.voter-row');
@@ -535,6 +566,7 @@
         const idx = +row.dataset.index;
         const cur = voters[idx]?.status || '';
         const newStatus = cur === 'our' ? '' : (cur === 'polled' ? 'ourpolled' : (cur === 'ourpolled' ? 'polled' : 'our'));
+        // Optimistic double-click
         bulkUpdateStatus([idx], () => newStatus);
         singleSelectedIndex = idx;
         renderTable();
@@ -562,14 +594,15 @@
       backBtn.addEventListener('click', () => location.href = 'index.html');
       logoutBtn.addEventListener('click', async () => {
         if (confirm('Are you sure you want to log out?')) {
+          stopPolling();
           await signOutUser(auth);
         }
       });
-      window.addEventListener('beforeunload', () => { if (pollInterval) clearInterval(pollInterval); });
-      window.addEventListener('pagehide', () => { if (pollInterval) clearInterval(pollInterval); });
+      window.addEventListener('beforeunload', stopPolling);
+      window.addEventListener('pagehide', stopPolling);
     }
 
-    // ---------- AUTH STATE & INIT ----------
+    // ---------- AUTH OBSERVER ----------
     onAuthStateChanged(auth, async (user) => {
       currentUser = user;
       const needsAuth = !isReadOnly && !user;
@@ -577,6 +610,7 @@
       voterCard.style.display = needsAuth ? 'none' : 'block';
       logoutBtn.style.display = (user && !isReadOnly) ? 'inline-flex' : 'none';
       
+      stopPolling();
       if (!needsAuth) {
         if (!isReadOnly && user) await ensureBoothExists();
         startPolling(boothId);
