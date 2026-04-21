@@ -34,7 +34,7 @@
   <style>
     :root {
       --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
-      --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
+      --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #61affe; --success: #34d399;
       --warning: #fbbf24; --shadow: 0 20px 60px rgba(0, 0, 0, 0.35); --our-highlight: #2563eb; --polled-highlight: #dc2626;
       --ourpolled-highlight: #16a34a;
     }
@@ -350,12 +350,42 @@
     // ✅ YOUR ACTUAL URLs
     const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
     const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
+    const FIREBASE_DB_URL = 'https://asmath-election-web-app-default-rtdb.firebaseio.com';
 
     displayAssembly.textContent = boothData.assemblyName;
     displayBooth.textContent = boothData.boothNo;
     displayTotal.textContent = totalVoters;
 
-    onAuthStateChanged(auth, (user) => {
+    // ---------- Ensure Booth Exists in Firebase ----------
+    async function ensureBoothExists(boothId, boothData, totalVoters) {
+      const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`);
+      const existing = await checkRes.json();
+      if (existing) {
+        console.log('✅ Booth already exists:', boothId);
+        return;
+      }
+      console.log('📝 Creating booth in Firebase:', boothId);
+      const boothPayload = {
+        assemblyName: boothData.assemblyName,
+        boothNo: boothData.boothNo,
+        votersCount: totalVoters
+      };
+      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`, {
+        method: 'PUT',
+        body: JSON.stringify(boothPayload)
+      });
+      const votersPayload = {};
+      for (let i = 0; i < totalVoters; i++) {
+        votersPayload[i] = { status: '', updatedAt: null };
+      }
+      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}/voters.json`, {
+        method: 'PUT',
+        body: JSON.stringify(votersPayload)
+      });
+      console.log('✅ Booth created successfully');
+    }
+
+    onAuthStateChanged(auth, async (user) => {
       currentUser = user;
       const needsAuth = !isReadOnly && !user;
       if (needsAuth) {
@@ -366,6 +396,12 @@
         loginCard.style.display = 'none';
         voterCard.style.display = 'block';
         logoutBtn.style.display = (user && !isReadOnly) ? 'inline-flex' : 'none';
+        
+        // Ensure booth exists when editor is logged in
+        if (!isReadOnly && user) {
+          await ensureBoothExists(boothId, boothData, totalVoters);
+        }
+        
         startPolling(boothId);
       }
       applyReadOnlyMode();
@@ -397,7 +433,6 @@
     // ---------- Polling for Snapshot ----------
     async function fetchSnapshot(boothId) {
       try {
-        // 🔽 CRITICAL FIX: Request lowercase filename
         const res = await fetch(`${CDN_BASE}/${boothId.toLowerCase()}.json`);
         if (!res.ok) throw new Error('Snapshot not found');
         const data = await res.json();
