@@ -598,10 +598,13 @@
         if (!confirm(confirmMsg)) return;
       }
       await bulkUpdateStatus(indices, statusResolver);
+      
+      // ✅ FIX: Clear selections AND re-render the table
       selectedIndices.clear();
       singleSelectedIndex = -1;
-      // ❗ CRITICAL FIX: Do NOT call fetchSnapshot here. It overwrites optimistic UI with stale CDN data.
-      // The regular polling will eventually sync the updated snapshot.
+      renderTable();
+      
+      // Do NOT call fetchSnapshot here to avoid overwriting optimistic UI
     }
 
     // Event Listeners
@@ -647,8 +650,10 @@
       else if (cur === 'ourpolled') updateVoterStatus(idx, 'polled');
       else updateVoterStatus(idx, 'our');
       singleSelectedIndex = idx;
-      // Double-click uses direct update; optimistic UI will be handled inside updateVoterStatus? No, we'll add optimistic there too.
-      // For simplicity, double-click doesn't have bulk optimistic, but it's okay.
+      // For double-click, we can also clear selection after update
+      selectedIndices.clear();
+      singleSelectedIndex = -1;
+      renderTable();
     });
 
     markOurBtn.addEventListener('click', () => performAction(cur => cur === 'polled' ? 'ourpolled' : 'our'));
@@ -670,7 +675,6 @@
       for (let i = 0; i < totalVoters; i++) {
         await updateVoterStatus(i, '');
       }
-      // After reset, force a snapshot fetch after a short delay to refresh UI
       setTimeout(() => fetchSnapshot(boothId), 2000);
     });
 
