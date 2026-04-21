@@ -36,8 +36,7 @@
     :root {
       --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
       --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
-      --warning: #fbbf24; --shadow: 0 20px 60px rgba(0, 0, 0, 0.35); --our-highlight: #2563eb; --polled-highlight: #dc2626;
-      --ourpolled-highlight: #16a34a;
+      --warning: #fbbf24; --shadow: 0 20px 60px rgba(0, 0, 0, 0.35); --our-highlight: #2563eb; --polled-highlight: #16a34a;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -200,7 +199,7 @@
 
   <div class="glass-card" id="voterCard">
     <div class="controls-bar">
-      <div class="search-wrapper">
+      <div class="52c4f">
         <i class="fas fa-search"></i>
         <input type="text" id="searchInput" placeholder="Search voter # or status..." autocomplete="off">
       </div>
@@ -248,496 +247,508 @@
   (function() {
     "use strict";
 
-    // ---------- DEPENDENCY CHECK ----------
-    if (!window.auth) { setTimeout(arguments.callee, 50); return; }
-    const auth = window.auth;
-    const onAuthStateChanged = window.firebaseOnAuthStateChanged;
-    const signIn = window.firebaseSignIn;
-    const signOutUser = window.firebaseSignOut;
-
-    // ---------- DOM ELEMENTS ----------
-    const $ = id => document.getElementById(id);
-    const displayAssembly = $('displayAssembly'), displayBooth = $('displayBooth'), displayTotal = $('displayTotal');
-    const statsContainer = $('statsContainer'), tbody = $('voterTableBody'), searchInput = $('searchInput');
-    const filterBtns = document.querySelectorAll('.filter-btn'), selectedInfo = $('selectedInfo');
-    const readonlyIndicator = $('readonlyIndicator'), loginCard = $('loginCard'), voterCard = $('voterCard');
-    const loginEmail = $('loginEmail'), loginPassword = $('loginPassword'), loginBtn = $('loginBtn'), loginError = $('loginError');
-    const logoutBtn = $('logoutBtn'), backBtn = $('backToBoothBtn'), refreshBtn = $('refreshBtn');
-    const shareViewLinkBtn = $('shareViewLinkBtn'), resetAllBtn = $('resetAllBtn');
-    const markOurBtn = $('markOurBtn'), markPolledBtn = $('markPolledBtn'), removeStatusBtn = $('removeStatusBtn');
-    const deselectAllBtn = $('deselectAllBtn'), selectAllCheckbox = $('selectAllCheckbox');
-    const connectionIndicator = $('connectionIndicator');
-
-    // ---------- CONSTANTS ----------
-    const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
-    const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
-    const FIREBASE_DB_URL = 'https://asmath-election-web-app-default-rtdb.firebaseio.com';
-    const VALID_STATUSES = new Set(['', 'our', 'polled', 'ourpolled']);
-    const POLL_INTERVALS = { view: 10000, edit: 5000 };
-    const UPDATE_CONCURRENCY = 16;
-
-    // ---------- STATE ----------
-    const state = {
-      voters: [],
-      totalVoters: 0,
-      currentUser: null,
-      isReadOnly: false,
-      selectedIndices: new Set(),
-      singleSelectedIndex: -1,
-      currentFilter: 'all',
-      searchTerm: '',
-      boothId: '',
-      lastSnapshotTimestamp: 0,
-      pollTimer: null,
-      isFetching: false,
-      isUpdating: false,
-      hasLoaded: false
-    };
-
-    // ---------- URL PARSING ----------
-    const urlParams = new URLSearchParams(window.location.search);
-    state.boothId = urlParams.get('booth');
-    if (!state.boothId) { alert('No booth specified.'); window.location.href = 'index.html'; return; }
-    state.boothId = decodeURIComponent(state.boothId);
-    const mode = urlParams.get('mode') || 'edit';
-    state.isReadOnly = (mode === 'view');
-    const totalParam = urlParams.get('total');
-    state.totalVoters = Number.isInteger(parseInt(totalParam)) && parseInt(totalParam) > 0 ? parseInt(totalParam) : 0;
-    if (state.totalVoters === 0) { alert('Invalid voter count.'); window.location.href = 'index.html'; return; }
-    const boothData = {
-      assemblyName: urlParams.get('assembly') || 'Unknown',
-      boothNo: urlParams.get('boothNo') || '0',
-      votersCount: state.totalVoters
-    };
-
-    displayAssembly.textContent = boothData.assemblyName;
-    displayBooth.textContent = boothData.boothNo;
-    displayTotal.textContent = state.totalVoters;
-
-    // ---------- UTILITY FUNCTIONS ----------
-    const escapeHtml = (text) => {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    };
-
-    const showToast = (message, type = 'info') => {
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    };
-
-    const normalizeStatus = (status) => {
-      const s = typeof status === 'string' ? status.trim().toLowerCase() : '';
-      return VALID_STATUSES.has(s) ? s : '';
-    };
-
-    const stopPolling = () => {
-      if (state.pollTimer) {
-        clearTimeout(state.pollTimer);
-        state.pollTimer = null;
+    // ---------- DEPENDENCY CHECK (NAMED FUNCTION, NO arguments.callee) ----------
+    function initWhenReady() {
+      if (!window.auth) {
+        setTimeout(initWhenReady, 50);
+        return;
       }
-    };
-
-    const updateConnectionUI = (status, label) => {
-      const span = connectionIndicator.querySelector('span:last-child');
-      if (span) span.textContent = label || 'Live';
-      const dot = connectionIndicator.querySelector('.connection-status');
-      if (dot) {
-        dot.style.background = status === 'live' ? '#4ade80' : (status === 'syncing' ? '#fbbf24' : '#fb7185');
-      }
-    };
-
-    // ---------- FIREBASE HELPERS ----------
-    async function ensureBoothExists() {
-      const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${state.boothId}.json`);
-      if ((await checkRes.json())) return;
-      await fetch(`${FIREBASE_DB_URL}/booths/${state.boothId}.json`, {
-        method: 'PUT',
-        body: JSON.stringify({ assemblyName: boothData.assemblyName, boothNo: boothData.boothNo, votersCount: state.totalVoters })
-      });
-      const votersPayload = {};
-      for (let i = 0; i < state.totalVoters; i++) votersPayload[i] = { status: '', updatedAt: null };
-      await fetch(`${FIREBASE_DB_URL}/booths/${state.boothId}/voters.json`, { method: 'PUT', body: JSON.stringify(votersPayload) });
+      startApp();
     }
 
-    // ---------- SNAPSHOT FETCH (CORS FIXED) ----------
-    async function fetchSnapshot(options = {}) {
-      if (state.isFetching) return false;
-      state.isFetching = true;
-      refreshBtn.disabled = true;
-      updateConnectionUI('syncing', 'Syncing...');
+    function startApp() {
+      console.log('🚀 Enterprise Election Suite Initialized');
+      const auth = window.auth;
+      const onAuthStateChanged = window.firebaseOnAuthStateChanged;
+      const signIn = window.firebaseSignIn;
+      const signOutUser = window.firebaseSignOut;
 
-      try {
-        const url = `${CDN_BASE}/${state.boothId.toLowerCase()}.json?ts=${Date.now()}`;
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error('Snapshot not found');
-        const data = await res.json();
-        const snapshotTime = Number(data.generatedAt) || 0;
-        if (snapshotTime > state.lastSnapshotTimestamp || !state.hasLoaded) {
-          state.lastSnapshotTimestamp = snapshotTime;
-          displayAssembly.textContent = data.assemblyName || boothData.assemblyName;
-          displayBooth.textContent = data.boothNo || boothData.boothNo;
-          state.totalVoters = data.votersCount || state.totalVoters;
-          displayTotal.textContent = state.totalVoters;
-          state.voters = (data.voters || []).map((v, idx) => ({
-            status: normalizeStatus(v.status),
-            updatedAt: v.updatedAt || null,
-            index: idx
-          }));
-          while (state.voters.length < state.totalVoters) {
-            state.voters.push({ status: '', updatedAt: null, index: state.voters.length });
+      // ---------- DOM ELEMENTS ----------
+      const $ = id => document.getElementById(id);
+      const displayAssembly = $('displayAssembly'), displayBooth = $('displayBooth'), displayTotal = $('displayTotal');
+      const statsContainer = $('statsContainer'), tbody = $('voterTableBody'), searchInput = $('searchInput');
+      const filterBtns = document.querySelectorAll('.filter-btn'), selectedInfo = $('selectedInfo');
+      const readonlyIndicator = $('readonlyIndicator'), loginCard = $('loginCard'), voterCard = $('voterCard');
+      const loginEmail = $('loginEmail'), loginPassword = $('loginPassword'), loginBtn = $('loginBtn'), loginError = $('loginError');
+      const logoutBtn = $('logoutBtn'), backBtn = $('backToBoothBtn'), refreshBtn = $('refreshBtn');
+      const shareViewLinkBtn = $('shareViewLinkBtn'), resetAllBtn = $('resetAllBtn');
+      const markOurBtn = $('markOurBtn'), markPolledBtn = $('markPolledBtn'), removeStatusBtn = $('removeStatusBtn');
+      const deselectAllBtn = $('deselectAllBtn'), selectAllCheckbox = $('selectAllCheckbox');
+      const connectionIndicator = $('connectionIndicator');
+
+      // ---------- CONSTANTS ----------
+      const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
+      const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
+      const FIREBASE_DB_URL = 'https://asmath-election-web-app-default-rtdb.firebaseio.com';
+      const VALID_STATUSES = new Set(['', 'our', 'polled', 'ourpolled']);
+      const POLL_INTERVALS = { view: 10000, edit: 5000 };
+      const UPDATE_CONCURRENCY = 16;
+
+      // ---------- STATE ----------
+      const state = {
+        voters: [],
+        totalVoters: 0,
+        currentUser: null,
+        isReadOnly: false,
+        selectedIndices: new Set(),
+        singleSelectedIndex: -1,
+        currentFilter: 'all',
+        searchTerm: '',
+        boothId: '',
+        lastSnapshotTimestamp: 0,
+        pollTimer: null,
+        isFetching: false,
+        isUpdating: false,
+        hasLoaded: false
+      };
+
+      // ---------- URL PARSING ----------
+      const urlParams = new URLSearchParams(window.location.search);
+      state.boothId = urlParams.get('booth');
+      if (!state.boothId) { alert('No booth specified.'); window.location.href = 'index.html'; return; }
+      state.boothId = decodeURIComponent(state.boothId);
+      const mode = urlParams.get('mode') || 'edit';
+      state.isReadOnly = (mode === 'view');
+      const totalParam = urlParams.get('total');
+      state.totalVoters = Number.isInteger(parseInt(totalParam)) && parseInt(totalParam) > 0 ? parseInt(totalParam) : 0;
+      if (state.totalVoters === 0) { alert('Invalid voter count.'); window.location.href = 'index.html'; return; }
+      const boothData = {
+        assemblyName: urlParams.get('assembly') || 'Unknown',
+        boothNo: urlParams.get('boothNo') || '0',
+        votersCount: state.totalVoters
+      };
+
+      displayAssembly.textContent = boothData.assemblyName;
+      displayBooth.textContent = boothData.boothNo;
+      displayTotal.textContent = state.totalVoters;
+
+      // ---------- UTILITY FUNCTIONS ----------
+      const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      };
+
+      const showToast = (message, type = 'info') => {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      };
+
+      const normalizeStatus = (status) => {
+        const s = typeof status === 'string' ? status.trim().toLowerCase() : '';
+        return VALID_STATUSES.has(s) ? s : '';
+      };
+
+      const stopPolling = () => {
+        if (state.pollTimer) {
+          clearTimeout(state.pollTimer);
+          state.pollTimer = null;
+        }
+      };
+
+      const updateConnectionUI = (status, label) => {
+        const span = connectionIndicator.querySelector('span:last-child');
+        if (span) span.textContent = label || 'Live';
+        const dot = connectionIndicator.querySelector('.connection-status');
+        if (dot) {
+          dot.style.background = status === 'live' ? '#4ade80' : (status === 'syncing' ? '#fbbf24' : '#fb7185');
+        }
+      };
+
+      // ---------- FIREBASE HELPERS ----------
+      async function ensureBoothExists() {
+        const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${state.boothId}.json`);
+        if ((await checkRes.json())) return;
+        await fetch(`${FIREBASE_DB_URL}/booths/${state.boothId}.json`, {
+          method: 'PUT',
+          body: JSON.stringify({ assemblyName: boothData.assemblyName, boothNo: boothData.boothNo, votersCount: state.totalVoters })
+        });
+        const votersPayload = {};
+        for (let i = 0; i < state.totalVoters; i++) votersPayload[i] = { status: '', updatedAt: null };
+        await fetch(`${FIREBASE_DB_URL}/booths/${state.boothId}/voters.json`, { method: 'PUT', body: JSON.stringify(votersPayload) });
+      }
+
+      // ---------- SNAPSHOT FETCH (CORS FIXED) ----------
+      async function fetchSnapshot(options = {}) {
+        if (state.isFetching) return false;
+        state.isFetching = true;
+        refreshBtn.disabled = true;
+        updateConnectionUI('syncing', 'Syncing...');
+
+        try {
+          const url = `${CDN_BASE}/${state.boothId.toLowerCase()}.json?ts=${Date.now()}`;
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) throw new Error('Snapshot not found');
+          const data = await res.json();
+          const snapshotTime = Number(data.generatedAt) || 0;
+          if (snapshotTime > state.lastSnapshotTimestamp || !state.hasLoaded) {
+            state.lastSnapshotTimestamp = snapshotTime;
+            displayAssembly.textContent = data.assemblyName || boothData.assemblyName;
+            displayBooth.textContent = data.boothNo || boothData.boothNo;
+            state.totalVoters = data.votersCount || state.totalVoters;
+            displayTotal.textContent = state.totalVoters;
+            state.voters = (data.voters || []).map((v, idx) => ({
+              status: normalizeStatus(v.status),
+              updatedAt: v.updatedAt || null,
+              index: idx
+            }));
+            while (state.voters.length < state.totalVoters) {
+              state.voters.push({ status: '', updatedAt: null, index: state.voters.length });
+            }
+            state.hasLoaded = true;
+            renderTable();
           }
-          state.hasLoaded = true;
+          updateConnectionUI('live', 'Live');
+          if (options.announceSuccess) showToast('Snapshot refreshed.', 'success');
+          return true;
+        } catch (error) {
+          console.error('Snapshot fetch failed:', error);
+          updateConnectionUI('error', 'Sync failed');
+          if (!state.hasLoaded) tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Unable to load data.</td></tr>';
+          if (!options.silent) showToast(error.message, 'error');
+          return false;
+        } finally {
+          state.isFetching = false;
+          refreshBtn.disabled = false;
+        }
+      }
+
+      function schedulePolling(delay) {
+        stopPolling();
+        if (document.hidden) return;
+        state.pollTimer = setTimeout(async () => {
+          await fetchSnapshot({ silent: true });
+          schedulePolling(state.isReadOnly ? POLL_INTERVALS.view : POLL_INTERVALS.edit);
+        }, delay);
+      }
+
+      function startPolling() {
+        if (!state.hasLoaded) {
+          fetchSnapshot({ silent: true }).finally(() => schedulePolling(state.isReadOnly ? POLL_INTERVALS.view : POLL_INTERVALS.edit));
+        } else {
+          schedulePolling(100);
+        }
+      }
+
+      // ---------- RENDERING ----------
+      function computeStats() {
+        let our = 0, polled = 0, ourPolled = 0;
+        state.voters.forEach(v => {
+          if (v.status === 'our') our++;
+          else if (v.status === 'polled') polled++;
+          else if (v.status === 'ourpolled') ourPolled++;
+        });
+        return {
+          our: our + ourPolled, polled: polled + ourPolled, ourPolled,
+          ourBalance: our, totalBalance: state.totalVoters - (polled + ourPolled)
+        };
+      }
+
+      function renderStats() {
+        const s = computeStats();
+        const p = v => state.totalVoters ? ((v/state.totalVoters)*100).toFixed(1)+'%' : '0.0%';
+        statsContainer.innerHTML = `
+          <div class="stat-card"><div class="stat-value stat-our">${s.our}<span class="stat-percent">${p(s.our)}</span></div><div class="stat-label">Our Votes</div></div>
+          <div class="stat-card"><div class="stat-value stat-polled">${s.polled}<span class="stat-percent">${p(s.polled)}</span></div><div class="stat-label">Total Polled</div></div>
+          <div class="stat-card"><div class="stat-value stat-ourpolled">${s.ourPolled}<span class="stat-percent">${p(s.ourPolled)}</span></div><div class="stat-label">Our Polled</div></div>
+          <div class="stat-card"><div class="stat-value stat-balance">${s.ourBalance}<span class="stat-percent">${p(s.ourBalance)}</span></div><div class="stat-label">Our Balance</div></div>
+          <div class="stat-card"><div class="stat-value">${s.totalBalance}<span class="stat-percent">${p(s.totalBalance)}</span></div><div class="stat-label">Total Balance</div></div>
+        `;
+      }
+
+      function getFilteredVoters() {
+        let filtered = state.voters.map((v, i) => ({ ...v, originalIndex: i }));
+        if (state.currentFilter !== 'all') {
+          filtered = filtered.filter(v => state.currentFilter === 'none' ? !v.status : v.status === state.currentFilter);
+        }
+        if (state.searchTerm) {
+          const term = state.searchTerm.toLowerCase();
+          filtered = filtered.filter(v => (v.originalIndex+1).toString().includes(term) || (v.status||'unmarked').toLowerCase().includes(term));
+        }
+        return filtered;
+      }
+
+      function renderTable() {
+        renderStats();
+        filterBtns.forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.filter === state.currentFilter);
+        });
+
+        if (!state.voters.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>';
+          selectedInfo.textContent = 'No voter selected';
+          return;
+        }
+
+        const filtered = getFilteredVoters();
+        const allFilteredIndices = filtered.map(v => v.originalIndex);
+        const allSelected = allFilteredIndices.length > 0 && allFilteredIndices.every(idx => state.selectedIndices.has(idx));
+        selectAllCheckbox.checked = allSelected;
+        selectAllCheckbox.indeterminate = !allSelected && allFilteredIndices.some(idx => state.selectedIndices.has(idx));
+
+        if (!filtered.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty-message">No voters match</td></tr>';
+          selectedInfo.textContent = 'No voter selected';
+          return;
+        }
+
+        const rowsHtml = filtered.map(item => {
+          const idx = item.originalIndex, s = item.status;
+          const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+          const isChecked = state.selectedIndices.has(idx);
+          const isSingle = (state.singleSelectedIndex === idx && state.selectedIndices.size === 0);
+          const rowClass = `voter-row ${isChecked ? 'checked-row' : (isSingle ? 'selected-row' : '')}`;
+          let slClass = 'sl-col';
+          if (s === 'our') slClass += ' sl-our';
+          else if (s === 'polled') slClass += ' sl-polled';
+          else if (s === 'ourpolled') slClass += ' sl-ourpolled';
+          const statusDisplay = s ? s.toUpperCase() : '—';
+          return `<tr class="${rowClass}" data-index="${idx}">
+            <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''} ${state.isReadOnly ? 'disabled' : ''}></td>
+            <td class="${slClass}">${idx+1}</td>
+            <td><span class="status-badge status-${s || 'none'}">${escapeHtml(statusDisplay)}</span></td>
+            <td>${escapeHtml(updated)}</td>
+          </tr>`;
+        }).join('');
+        tbody.innerHTML = rowsHtml;
+
+        if (state.selectedIndices.size) {
+          selectedInfo.textContent = `${state.selectedIndices.size} voter(s) selected`;
+        } else if (state.singleSelectedIndex !== -1) {
+          selectedInfo.textContent = `Selected: Voter #${state.singleSelectedIndex+1}`;
+        } else {
+          selectedInfo.textContent = 'No voter selected';
+        }
+      }
+
+      function applyReadOnlyMode() {
+        const canEdit = !state.isReadOnly && state.currentUser && !state.isUpdating;
+        readonlyIndicator.style.display = state.isReadOnly ? 'inline-flex' : 'none';
+        [markOurBtn, markPolledBtn, removeStatusBtn, resetAllBtn].forEach(b => b.disabled = !canEdit);
+        deselectAllBtn.disabled = !canEdit || (state.selectedIndices.size === 0 && state.singleSelectedIndex === -1);
+        selectAllCheckbox.disabled = !canEdit;
+        document.querySelectorAll('.voter-checkbox').forEach(cb => cb.disabled = !canEdit);
+        backBtn.textContent = state.isReadOnly ? 'Back to Setup' : 'Change Booth';
+      }
+
+      // ---------- UPDATE LOGIC ----------
+      async function updateVoterStatus(index, newStatus, updatedAt) {
+        if (state.isReadOnly || !state.currentUser) return false;
+        try {
+          const res = await fetch(UPDATE_WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ boothId: state.boothId, voterIndex: index, newStatus, updatedAt })
+          });
+          if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
+          return true;
+        } catch (error) {
+          console.error('Update error:', error);
+          return false;
+        }
+      }
+
+      async function bulkUpdateStatus(indices, statusResolver) {
+        if (state.isReadOnly || !state.currentUser || !indices.length) return false;
+
+        const plan = indices.map(idx => {
+          const cur = state.voters[idx]?.status || '';
+          return { idx, oldStatus: cur, newStatus: normalizeStatus(statusResolver(cur)) };
+        }).filter(p => state.voters[p.idx]);
+
+        if (!plan.length) return false;
+
+        // Optimistic UI
+        const updatedAt = new Date().toISOString();
+        plan.forEach(p => { state.voters[p.idx].status = p.newStatus; state.voters[p.idx].updatedAt = updatedAt; });
+        renderTable();
+        state.isUpdating = true;
+        applyReadOnlyMode();
+        updateConnectionUI('syncing', `Updating ${plan.length} voter(s)...`);
+
+        // Concurrent updates
+        const results = await Promise.all(Array.from({ length: Math.ceil(plan.length / UPDATE_CONCURRENCY) }, (_, i) => {
+          const chunk = plan.slice(i * UPDATE_CONCURRENCY, (i + 1) * UPDATE_CONCURRENCY);
+          return Promise.all(chunk.map(p => updateVoterStatus(p.idx, p.newStatus, updatedAt)));
+        })).then(arr => arr.flat());
+
+        const failed = results.some(success => !success);
+        if (failed) {
+          plan.forEach(p => { state.voters[p.idx].status = p.oldStatus; });
+          renderTable();
+          showToast('Some updates failed and were rolled back.', 'error');
+          updateConnectionUI('error', 'Update failed');
+        } else {
+          showToast(`Updated ${plan.length} voter(s).`, 'success');
+          updateConnectionUI('live', 'Live');
+          setTimeout(() => fetchSnapshot({ silent: true }), 2000);
+        }
+
+        state.isUpdating = false;
+        applyReadOnlyMode();
+        return !failed;
+      }
+
+      function getQuickToggleStatus(current) {
+        if (current === 'our') return '';
+        if (current === 'polled') return 'ourpolled';
+        if (current === 'ourpolled') return 'polled';
+        return 'our';
+      }
+
+      async function performAction(statusResolver) {
+        let indices = state.selectedIndices.size ? Array.from(state.selectedIndices) : (state.singleSelectedIndex !== -1 ? [state.singleSelectedIndex] : []);
+        if (!indices.length) { alert('Select at least one voter.'); return; }
+        const filtered = getFilteredVoters().map(v => v.originalIndex);
+        if (indices.length === filtered.length && filtered.length > 0) {
+          if (!confirm(`Update ALL ${filtered.length} visible voters?`)) return;
+        }
+        const success = await bulkUpdateStatus(indices, statusResolver);
+        if (success) {
+          state.selectedIndices.clear();
+          state.singleSelectedIndex = -1;
           renderTable();
         }
-        updateConnectionUI('live', 'Live');
-        if (options.announceSuccess) showToast('Snapshot refreshed.', 'success');
-        return true;
-      } catch (error) {
-        console.error('Snapshot fetch failed:', error);
-        updateConnectionUI('error', 'Sync failed');
-        if (!state.hasLoaded) tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Unable to load data.</td></tr>';
-        if (!options.silent) showToast(error.message, 'error');
-        return false;
-      } finally {
-        state.isFetching = false;
-        refreshBtn.disabled = false;
-      }
-    }
-
-    function schedulePolling(delay) {
-      stopPolling();
-      if (document.hidden) return;
-      state.pollTimer = setTimeout(async () => {
-        await fetchSnapshot({ silent: true });
-        schedulePolling(state.isReadOnly ? POLL_INTERVALS.view : POLL_INTERVALS.edit);
-      }, delay);
-    }
-
-    function startPolling() {
-      if (!state.hasLoaded) {
-        fetchSnapshot({ silent: true }).finally(() => schedulePolling(state.isReadOnly ? POLL_INTERVALS.view : POLL_INTERVALS.edit));
-      } else {
-        schedulePolling(100);
-      }
-    }
-
-    // ---------- RENDERING ----------
-    function computeStats() {
-      let our = 0, polled = 0, ourPolled = 0;
-      state.voters.forEach(v => {
-        if (v.status === 'our') our++;
-        else if (v.status === 'polled') polled++;
-        else if (v.status === 'ourpolled') ourPolled++;
-      });
-      return {
-        our: our + ourPolled, polled: polled + ourPolled, ourPolled,
-        ourBalance: our, totalBalance: state.totalVoters - (polled + ourPolled)
-      };
-    }
-
-    function renderStats() {
-      const s = computeStats();
-      const p = v => state.totalVoters ? ((v/state.totalVoters)*100).toFixed(1)+'%' : '0.0%';
-      statsContainer.innerHTML = `
-        <div class="stat-card"><div class="stat-value stat-our">${s.our}<span class="stat-percent">${p(s.our)}</span></div><div class="stat-label">Our Votes</div></div>
-        <div class="stat-card"><div class="stat-value stat-polled">${s.polled}<span class="stat-percent">${p(s.polled)}</span></div><div class="stat-label">Total Polled</div></div>
-        <div class="stat-card"><div class="stat-value stat-ourpolled">${s.ourPolled}<span class="stat-percent">${p(s.ourPolled)}</span></div><div class="stat-label">Our Polled</div></div>
-        <div class="stat-card"><div class="stat-value stat-balance">${s.ourBalance}<span class="stat-percent">${p(s.ourBalance)}</span></div><div class="stat-label">Our Balance</div></div>
-        <div class="stat-card"><div class="stat-value">${s.totalBalance}<span class="stat-percent">${p(s.totalBalance)}</span></div><div class="stat-label">Total Balance</div></div>
-      `;
-    }
-
-    function getFilteredVoters() {
-      let filtered = state.voters.map((v, i) => ({ ...v, originalIndex: i }));
-      if (state.currentFilter !== 'all') {
-        filtered = filtered.filter(v => state.currentFilter === 'none' ? !v.status : v.status === state.currentFilter);
-      }
-      if (state.searchTerm) {
-        const term = state.searchTerm.toLowerCase();
-        filtered = filtered.filter(v => (v.originalIndex+1).toString().includes(term) || (v.status||'unmarked').toLowerCase().includes(term));
-      }
-      return filtered;
-    }
-
-    function renderTable() {
-      renderStats();
-      filterBtns.forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.filter === state.currentFilter);
-      });
-
-      if (!state.voters.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>';
-        selectedInfo.textContent = 'No voter selected';
-        return;
       }
 
-      const filtered = getFilteredVoters();
-      const allFilteredIndices = filtered.map(v => v.originalIndex);
-      const allSelected = allFilteredIndices.length > 0 && allFilteredIndices.every(idx => state.selectedIndices.has(idx));
-      selectAllCheckbox.checked = allSelected;
-      selectAllCheckbox.indeterminate = !allSelected && allFilteredIndices.some(idx => state.selectedIndices.has(idx));
-
-      if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-message">No voters match</td></tr>';
-        selectedInfo.textContent = 'No voter selected';
-        return;
-      }
-
-      const rowsHtml = filtered.map(item => {
-        const idx = item.originalIndex, s = item.status;
-        const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
-        const isChecked = state.selectedIndices.has(idx);
-        const isSingle = (state.singleSelectedIndex === idx && state.selectedIndices.size === 0);
-        const rowClass = `voter-row ${isChecked ? 'checked-row' : (isSingle ? 'selected-row' : '')}`;
-        let slClass = 'sl-col';
-        if (s === 'our') slClass += ' sl-our';
-        else if (s === 'polled') slClass += ' sl-polled';
-        else if (s === 'ourpolled') slClass += ' sl-ourpolled';
-        const statusDisplay = s ? s.toUpperCase() : '—';
-        return `<tr class="${rowClass}" data-index="${idx}">
-          <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''} ${state.isReadOnly ? 'disabled' : ''}></td>
-          <td class="${slClass}">${idx+1}</td>
-          <td><span class="status-badge status-${s || 'none'}">${escapeHtml(statusDisplay)}</span></td>
-          <td>${escapeHtml(updated)}</td>
-        </tr>`;
-      }).join('');
-      tbody.innerHTML = rowsHtml;
-
-      if (state.selectedIndices.size) {
-        selectedInfo.textContent = `${state.selectedIndices.size} voter(s) selected`;
-      } else if (state.singleSelectedIndex !== -1) {
-        selectedInfo.textContent = `Selected: Voter #${state.singleSelectedIndex+1}`;
-      } else {
-        selectedInfo.textContent = 'No voter selected';
-      }
-    }
-
-    function applyReadOnlyMode() {
-      const canEdit = !state.isReadOnly && state.currentUser && !state.isUpdating;
-      readonlyIndicator.style.display = state.isReadOnly ? 'inline-flex' : 'none';
-      [markOurBtn, markPolledBtn, removeStatusBtn, resetAllBtn].forEach(b => b.disabled = !canEdit);
-      deselectAllBtn.disabled = !canEdit || (state.selectedIndices.size === 0 && state.singleSelectedIndex === -1);
-      selectAllCheckbox.disabled = !canEdit;
-      document.querySelectorAll('.voter-checkbox').forEach(cb => cb.disabled = !canEdit);
-      backBtn.textContent = state.isReadOnly ? 'Back to Setup' : 'Change Booth';
-    }
-
-    // ---------- UPDATE LOGIC ----------
-    async function updateVoterStatus(index, newStatus, updatedAt) {
-      if (state.isReadOnly || !state.currentUser) return false;
-      try {
-        const res = await fetch(UPDATE_WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ boothId: state.boothId, voterIndex: index, newStatus, updatedAt })
+      // ---------- EVENT LISTENERS ----------
+      function setupEventListeners() {
+        tbody.addEventListener('change', e => {
+          if (!e.target.classList.contains('voter-checkbox') || state.isReadOnly) return;
+          const idx = +e.target.dataset.index;
+          e.target.checked ? state.selectedIndices.add(idx) : state.selectedIndices.delete(idx);
+          state.singleSelectedIndex = -1;
+          renderTable();
         });
-        if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
-        return true;
-      } catch (error) {
-        console.error('Update error:', error);
-        return false;
-      }
-    }
-
-    async function bulkUpdateStatus(indices, statusResolver) {
-      if (state.isReadOnly || !state.currentUser || !indices.length) return false;
-
-      const plan = indices.map(idx => {
-        const cur = state.voters[idx]?.status || '';
-        return { idx, oldStatus: cur, newStatus: normalizeStatus(statusResolver(cur)) };
-      }).filter(p => state.voters[p.idx]);
-
-      if (!plan.length) return false;
-
-      // Optimistic UI
-      const updatedAt = new Date().toISOString();
-      plan.forEach(p => { state.voters[p.idx].status = p.newStatus; state.voters[p.idx].updatedAt = updatedAt; });
-      renderTable();
-      state.isUpdating = true;
-      applyReadOnlyMode();
-      updateConnectionUI('syncing', `Updating ${plan.length} voter(s)...`);
-
-      // Concurrent updates
-      const results = await Promise.all(Array.from({ length: Math.ceil(plan.length / UPDATE_CONCURRENCY) }, (_, i) => {
-        const chunk = plan.slice(i * UPDATE_CONCURRENCY, (i + 1) * UPDATE_CONCURRENCY);
-        return Promise.all(chunk.map(p => updateVoterStatus(p.idx, p.newStatus, updatedAt)));
-      })).then(arr => arr.flat());
-
-      const failed = results.some(success => !success);
-      if (failed) {
-        plan.forEach(p => { state.voters[p.idx].status = p.oldStatus; });
-        renderTable();
-        showToast('Some updates failed and were rolled back.', 'error');
-        updateConnectionUI('error', 'Update failed');
-      } else {
-        showToast(`Updated ${plan.length} voter(s).`, 'success');
-        updateConnectionUI('live', 'Live');
-        setTimeout(() => fetchSnapshot({ silent: true }), 2000);
-      }
-
-      state.isUpdating = false;
-      applyReadOnlyMode();
-      return !failed;
-    }
-
-    function getQuickToggleStatus(current) {
-      if (current === 'our') return '';
-      if (current === 'polled') return 'ourpolled';
-      if (current === 'ourpolled') return 'polled';
-      return 'our';
-    }
-
-    async function performAction(statusResolver) {
-      let indices = state.selectedIndices.size ? Array.from(state.selectedIndices) : (state.singleSelectedIndex !== -1 ? [state.singleSelectedIndex] : []);
-      if (!indices.length) { alert('Select at least one voter.'); return; }
-      const filtered = getFilteredVoters().map(v => v.originalIndex);
-      if (indices.length === filtered.length && filtered.length > 0) {
-        if (!confirm(`Update ALL ${filtered.length} visible voters?`)) return;
-      }
-      const success = await bulkUpdateStatus(indices, statusResolver);
-      if (success) {
-        state.selectedIndices.clear();
-        state.singleSelectedIndex = -1;
-        renderTable();
-      }
-    }
-
-    // ---------- EVENT LISTENERS ----------
-    function setupEventListeners() {
-      tbody.addEventListener('change', e => {
-        if (!e.target.classList.contains('voter-checkbox') || state.isReadOnly) return;
-        const idx = +e.target.dataset.index;
-        e.target.checked ? state.selectedIndices.add(idx) : state.selectedIndices.delete(idx);
-        state.singleSelectedIndex = -1;
-        renderTable();
-      });
-      selectAllCheckbox.addEventListener('change', e => {
-        if (state.isReadOnly) return;
-        const filtered = getFilteredVoters();
-        filtered.forEach(v => e.target.checked ? state.selectedIndices.add(v.originalIndex) : state.selectedIndices.delete(v.originalIndex));
-        state.singleSelectedIndex = -1;
-        renderTable();
-      });
-      deselectAllBtn.addEventListener('click', () => {
-        if (state.isReadOnly) return;
-        state.selectedIndices.clear();
-        state.singleSelectedIndex = -1;
-        renderTable();
-      });
-      tbody.addEventListener('click', e => {
-        if (e.target.type === 'checkbox' || state.isReadOnly || !state.currentUser || state.isUpdating) return;
-        const row = e.target.closest('tr.voter-row');
-        if (!row || state.selectedIndices.size) return;
-        const idx = +row.dataset.index;
-        state.singleSelectedIndex = state.singleSelectedIndex === idx ? -1 : idx;
-        renderTable();
-      });
-      tbody.addEventListener('dblclick', async e => {
-        if (state.isReadOnly || !state.currentUser || state.isUpdating) return;
-        const row = e.target.closest('tr.voter-row');
-        if (!row || state.selectedIndices.size) return;
-        const idx = +row.dataset.index;
-        const cur = state.voters[idx]?.status || '';
-        const success = await bulkUpdateStatus([idx], () => getQuickToggleStatus(cur));
-        if (success) { state.singleSelectedIndex = idx; renderTable(); }
-      });
-      tbody.addEventListener('keydown', async e => {
-        if (e.key === 'Enter' && !state.isReadOnly && state.currentUser && !state.isUpdating) {
+        selectAllCheckbox.addEventListener('change', e => {
+          if (state.isReadOnly) return;
+          const filtered = getFilteredVoters();
+          filtered.forEach(v => e.target.checked ? state.selectedIndices.add(v.originalIndex) : state.selectedIndices.delete(v.originalIndex));
+          state.singleSelectedIndex = -1;
+          renderTable();
+        });
+        deselectAllBtn.addEventListener('click', () => {
+          if (state.isReadOnly) return;
+          state.selectedIndices.clear();
+          state.singleSelectedIndex = -1;
+          renderTable();
+        });
+        tbody.addEventListener('click', e => {
+          if (e.target.type === 'checkbox' || state.isReadOnly || !state.currentUser || state.isUpdating) return;
+          const row = e.target.closest('tr.voter-row');
+          if (!row || state.selectedIndices.size) return;
+          const idx = +row.dataset.index;
+          state.singleSelectedIndex = state.singleSelectedIndex === idx ? -1 : idx;
+          renderTable();
+        });
+        tbody.addEventListener('dblclick', async e => {
+          if (state.isReadOnly || !state.currentUser || state.isUpdating) return;
           const row = e.target.closest('tr.voter-row');
           if (!row || state.selectedIndices.size) return;
           const idx = +row.dataset.index;
           const cur = state.voters[idx]?.status || '';
-          await bulkUpdateStatus([idx], () => getQuickToggleStatus(cur));
-          renderTable();
-        }
-      });
-      markOurBtn.addEventListener('click', () => performAction(cur => cur === 'polled' ? 'ourpolled' : 'our'));
-      markPolledBtn.addEventListener('click', () => performAction(cur => cur === 'our' ? 'ourpolled' : 'polled'));
-      removeStatusBtn.addEventListener('click', () => performAction(() => ''));
-      filterBtns.forEach(btn => btn.addEventListener('click', () => {
-        state.currentFilter = btn.dataset.filter;
-        renderTable();
-      }));
-      searchInput.addEventListener('input', e => {
-        state.searchTerm = e.target.value.trim();
-        renderTable();
-      });
-      refreshBtn.addEventListener('click', () => fetchSnapshot({ announceSuccess: true }));
-      resetAllBtn.addEventListener('click', async () => {
-        if (state.isReadOnly || !state.currentUser || state.isUpdating) return;
-        if (!confirm(`Reset all ${state.totalVoters} voters?`)) return;
-        const indices = Array.from({ length: state.voters.length }, (_, i) => i);
-        await bulkUpdateStatus(indices, () => '');
-        state.selectedIndices.clear();
-        state.singleSelectedIndex = -1;
-        renderTable();
-      });
-      shareViewLinkBtn.addEventListener('click', async () => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('mode', 'view');
-        await navigator.clipboard.writeText(url.toString());
-        showToast('Viewer link copied!', 'success');
-      });
-      backBtn.addEventListener('click', () => window.location.href = 'index.html');
-      logoutBtn.addEventListener('click', async () => {
-        if (confirm('Log out?')) {
-          stopPolling();
-          await signOutUser(auth);
-        }
-      });
-      loginBtn.addEventListener('click', async () => {
-        const email = loginEmail.value.trim(), password = loginPassword.value;
-        if (!email || !password) { loginError.textContent = 'Enter email and password.'; return; }
-        try {
-          await signIn(auth, email, password);
-          loginError.textContent = ''; loginEmail.value = loginPassword.value = '';
-        } catch (error) { loginError.textContent = error.message; }
-      });
-      loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
-      document.addEventListener('keydown', e => {
-        if (e.key === '/' && document.activeElement !== searchInput) {
-          e.preventDefault();
-          searchInput.focus();
-          searchInput.select();
-        } else if (e.key === 'Escape') {
-          if (document.activeElement === searchInput && searchInput.value) {
-            searchInput.value = '';
-            state.searchTerm = '';
-            renderTable();
-          } else if (state.selectedIndices.size || state.singleSelectedIndex !== -1) {
-            state.selectedIndices.clear();
-            state.singleSelectedIndex = -1;
+          const success = await bulkUpdateStatus([idx], () => getQuickToggleStatus(cur));
+          if (success) { state.singleSelectedIndex = idx; renderTable(); }
+        });
+        tbody.addEventListener('keydown', async e => {
+          if (e.key === 'Enter' && !state.isReadOnly && state.currentUser && !state.isUpdating) {
+            const row = e.target.closest('tr.voter-row');
+            if (!row || state.selectedIndices.size) return;
+            const idx = +row.dataset.index;
+            const cur = state.voters[idx]?.status || '';
+            await bulkUpdateStatus([idx], () => getQuickToggleStatus(cur));
             renderTable();
           }
+        });
+        markOurBtn.addEventListener('click', () => performAction(cur => cur === 'polled' ? 'ourpolled' : 'our'));
+        markPolledBtn.addEventListener('click', () => performAction(cur => cur === 'our' ? 'ourpolled' : 'polled'));
+        removeStatusBtn.addEventListener('click', () => performAction(() => ''));
+        filterBtns.forEach(btn => btn.addEventListener('click', () => {
+          state.currentFilter = btn.dataset.filter;
+          renderTable();
+        }));
+        searchInput.addEventListener('input', e => {
+          state.searchTerm = e.target.value.trim();
+          renderTable();
+        });
+        refreshBtn.addEventListener('click', () => fetchSnapshot({ announceSuccess: true }));
+        resetAllBtn.addEventListener('click', async () => {
+          if (state.isReadOnly || !state.currentUser || state.isUpdating) return;
+          if (!confirm(`Reset all ${state.totalVoters} voters?`)) return;
+          const indices = Array.from({ length: state.voters.length }, (_, i) => i);
+          await bulkUpdateStatus(indices, () => '');
+          state.selectedIndices.clear();
+          state.singleSelectedIndex = -1;
+          renderTable();
+        });
+        shareViewLinkBtn.addEventListener('click', async () => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('mode', 'view');
+          await navigator.clipboard.writeText(url.toString());
+          showToast('Viewer link copied!', 'success');
+        });
+        backBtn.addEventListener('click', () => window.location.href = 'index.html');
+        logoutBtn.addEventListener('click', async () => {
+          if (confirm('Log out?')) {
+            stopPolling();
+            await signOutUser(auth);
+          }
+        });
+        loginBtn.addEventListener('click', async () => {
+          const email = loginEmail.value.trim(), password = loginPassword.value;
+          if (!email || !password) { loginError.textContent = 'Enter email and password.'; return; }
+          try {
+            await signIn(auth, email, password);
+            loginError.textContent = ''; loginEmail.value = loginPassword.value = '';
+          } catch (error) { loginError.textContent = error.message; }
+        });
+        loginPassword.addEventListener('keydown', e => { if (e.key === 'Enter') loginBtn.click(); });
+        document.addEventListener('keydown', e => {
+          if (e.key === '/' && document.activeElement !== searchInput) {
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+          } else if (e.key === 'Escape') {
+            if (document.activeElement === searchInput && searchInput.value) {
+              searchInput.value = '';
+              state.searchTerm = '';
+              renderTable();
+            } else if (state.selectedIndices.size || state.singleSelectedIndex !== -1) {
+              state.selectedIndices.clear();
+              state.singleSelectedIndex = -1;
+              renderTable();
+            }
+          }
+        });
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) stopPolling();
+          else startPolling();
+        });
+        window.addEventListener('beforeunload', stopPolling);
+      }
+
+      // ---------- AUTH OBSERVER ----------
+      onAuthStateChanged(auth, async (user) => {
+        state.currentUser = user;
+        const needsAuth = !state.isReadOnly && !user;
+        loginCard.style.display = needsAuth ? 'block' : 'none';
+        voterCard.style.display = needsAuth ? 'none' : 'block';
+        logoutBtn.style.display = (user && !state.isReadOnly) ? 'inline-flex' : 'none';
+        stopPolling();
+        if (!needsAuth) {
+          if (!state.isReadOnly && user) await ensureBoothExists();
+          startPolling();
         }
+        applyReadOnlyMode();
       });
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden) stopPolling();
-        else startPolling();
-      });
-      window.addEventListener('beforeunload', stopPolling);
+
+      setupEventListeners();
     }
 
-    // ---------- AUTH OBSERVER ----------
-    onAuthStateChanged(auth, async (user) => {
-      state.currentUser = user;
-      const needsAuth = !state.isReadOnly && !user;
-      loginCard.style.display = needsAuth ? 'block' : 'none';
-      voterCard.style.display = needsAuth ? 'none' : 'block';
-      logoutBtn.style.display = (user && !state.isReadOnly) ? 'inline-flex' : 'none';
-      stopPolling();
-      if (!needsAuth) {
-        if (!state.isReadOnly && user) await ensureBoothExists();
-        startPolling();
-      }
-      applyReadOnlyMode();
-    });
-
-    setupEventListeners();
+    initWhenReady();
   })();
 </script>
 </body>
