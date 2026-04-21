@@ -34,7 +34,7 @@
   <style>
     :root {
       --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
-      --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #61affe; --success: #34d399;
+      --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
       --warning: #fbbf24; --shadow: 0 20px 60px rgba(0, 0, 0, 0.35); --our-highlight: #2563eb; --polled-highlight: #dc2626;
       --ourpolled-highlight: #16a34a;
     }
@@ -504,10 +504,26 @@
 
     async function bulkUpdateStatus(indices, newStatusResolver) {
       if (isReadOnly || !currentUser || indices.length === 0) return;
+
+      // Optimistic UI update: apply changes to local voters array immediately
+      for (const idx of indices) {
+        if (voters[idx]) {
+          const cur = voters[idx].status || '';
+          const newStatus = newStatusResolver(cur);
+          voters[idx].status = newStatus;
+          voters[idx].updatedAt = new Date().toISOString();
+        }
+      }
+      // Re-render table instantly so the user sees the change
+      renderTable();
+
+      // Send updates to the Worker in the background (does not block UI)
       for (const idx of indices) {
         const cur = voters[idx]?.status || '';
         const newStatus = newStatusResolver(cur);
-        await updateVoterStatus(idx, newStatus);
+        await updateVoterStatus(idx, newStatus).catch(e => {
+          console.warn('Background sync failed for voter', idx, e);
+        });
       }
     }
 
