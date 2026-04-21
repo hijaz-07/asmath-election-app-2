@@ -32,7 +32,7 @@
     console.log('✅ Firebase Auth initialized');
   </script>
   <style>
-    /* ========== DESIGN SYSTEM (unchanged, kept for consistency) ========== */
+    /* ========== DESIGN SYSTEM (unchanged) ========== */
     :root {
       --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
       --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
@@ -247,387 +247,391 @@
   (function() {
     "use strict";
 
-    // ---------- DEPENDENCY CHECKS ----------
-    if (!window.auth) { setTimeout(arguments.callee, 50); return; }
-    const auth = window.auth;
-    const onAuthStateChanged = window.firebaseOnAuthStateChanged;
-    const signIn = window.firebaseSignIn;
-    const signOutUser = window.firebaseSignOut;
-
-    // ---------- DOM ELEMENTS ----------
-    const $ = id => document.getElementById(id);
-    const displayAssembly = $('displayAssembly'), displayBooth = $('displayBooth'), displayTotal = $('displayTotal');
-    const statsContainer = $('statsContainer'), tbody = $('voterTableBody'), searchInput = $('searchInput');
-    const filterBtns = document.querySelectorAll('.filter-btn'), selectedInfo = $('selectedInfo');
-    const readonlyIndicator = $('readonlyIndicator'), loginCard = $('loginCard'), voterCard = $('voterCard');
-    const loginEmail = $('loginEmail'), loginPassword = $('loginPassword'), loginBtn = $('loginBtn'), loginError = $('loginError');
-    const logoutBtn = $('logoutBtn'), backBtn = $('backToBoothBtn'), shareViewLinkBtn = $('shareViewLinkBtn');
-    const resetAllBtn = $('resetAllBtn'), markOurBtn = $('markOurBtn'), markPolledBtn = $('markPolledBtn');
-    const removeStatusBtn = $('removeStatusBtn'), deselectAllBtn = $('deselectAllBtn'), selectAllCheckbox = $('selectAllCheckbox');
-
-    // ---------- CONSTANTS ----------
-    const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
-    const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
-    const FIREBASE_DB_URL = 'https://asmath-election-web-app-default-rtdb.firebaseio.com';
-
-    // ---------- STATE ----------
-    let voters = [];                     // { index, status, updatedAt }
-    let totalVoters = 0;
-    let currentUser = null;
-    let isReadOnly = false;
-    let selectedIndices = new Set();     // indices (original order) currently checked
-    let singleSelectedIndex = -1;        // used only when no checkboxes are ticked
-    let currentFilter = 'all';
-    let searchTerm = '';
-    let pollInterval = null;
-    let lastSnapshotTimestamp = 0;       // numeric timestamp for freshness
-    let boothId = null;
-
-    // For optimistic rollback
-    let pendingRollbackMap = new Map();  // index -> previous status
-
-    // ---------- URL PARSING & VALIDATION ----------
-    const urlParams = new URLSearchParams(window.location.search);
-    boothId = urlParams.get('booth');
-    if (!boothId) { alert('No booth specified.'); window.location.href = 'index.html'; return; }
-    boothId = decodeURIComponent(boothId);
-    const mode = urlParams.get('mode') || 'edit';
-    isReadOnly = (mode === 'view');
-    const totalParam = urlParams.get('total');
-    totalVoters = Number.isInteger(parseInt(totalParam)) && parseInt(totalParam) > 0 ? parseInt(totalParam) : 0;
-    if (totalVoters === 0) { alert('Invalid voter count.'); window.location.href = 'index.html'; return; }
-    const assemblyParam = urlParams.get('assembly') || 'Unknown';
-    const boothNoParam = urlParams.get('boothNo') || '0';
-
-    displayAssembly.textContent = assemblyParam;
-    displayBooth.textContent = boothNoParam;
-    displayTotal.textContent = totalVoters;
-
-    // ---------- UTILITY: TOAST ----------
-    function showToast(message, type = 'info') {
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    }
-
-    // ---------- SAFE HTML ESCAPE (XSS PREVENTION) ----------
-    const escapeHtml = (text) => {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    };
-
-    // ---------- STOP POLLING ----------
-    function stopPolling() {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = null;
+    // ---------- DEPENDENCY CHECK (NO arguments.callee) ----------
+    function initWhenReady() {
+      if (!window.auth) {
+        setTimeout(initWhenReady, 50);
+        return;
       }
+      startApp();
     }
 
-    // ---------- ENSURE BOOTH EXISTS (FIREBASE REST) ----------
-    async function ensureBoothExists() {
-      const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`);
-      if ((await checkRes.json())) return;
-      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`, {
-        method: 'PUT',
-        body: JSON.stringify({ assemblyName: assemblyParam, boothNo: boothNoParam, votersCount: totalVoters })
-      });
-      const votersPayload = {};
-      for (let i = 0; i < totalVoters; i++) votersPayload[i] = { status: '', updatedAt: null };
-      await fetch(`${FIREBASE_DB_URL}/booths/${boothId}/voters.json`, { method: 'PUT', body: JSON.stringify(votersPayload) });
-    }
+    function startApp() {
+      console.log('🚀 Enterprise Election Suite Initialized');
+      const auth = window.auth;
+      const onAuthStateChanged = window.firebaseOnAuthStateChanged;
+      const signIn = window.firebaseSignIn;
+      const signOutUser = window.firebaseSignOut;
 
-    // ---------- UPDATE SINGLE VOTER (WORKER) ----------
-    async function updateVoterStatus(index, newStatus) {
-      if (isReadOnly || !currentUser) return false;
-      try {
-        const res = await fetch(UPDATE_WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ boothId, voterIndex: index, newStatus })
-        });
-        if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
-        return true;
-      } catch (error) {
-        console.error('Update error:', error);
-        return false;
-      }
-    }
+      // ---------- DOM ELEMENTS ----------
+      const $ = id => document.getElementById(id);
+      const displayAssembly = $('displayAssembly'), displayBooth = $('displayBooth'), displayTotal = $('displayTotal');
+      const statsContainer = $('statsContainer'), tbody = $('voterTableBody'), searchInput = $('searchInput');
+      const filterBtns = document.querySelectorAll('.filter-btn'), selectedInfo = $('selectedInfo');
+      const readonlyIndicator = $('readonlyIndicator'), loginCard = $('loginCard'), voterCard = $('voterCard');
+      const loginEmail = $('loginEmail'), loginPassword = $('loginPassword'), loginBtn = $('loginBtn'), loginError = $('loginError');
+      const logoutBtn = $('logoutBtn'), backBtn = $('backToBoothBtn'), shareViewLinkBtn = $('shareViewLinkBtn');
+      const resetAllBtn = $('resetAllBtn'), markOurBtn = $('markOurBtn'), markPolledBtn = $('markPolledBtn');
+      const removeStatusBtn = $('removeStatusBtn'), deselectAllBtn = $('deselectAllBtn'), selectAllCheckbox = $('selectAllCheckbox');
 
-    // ---------- OPTIMISTIC UI HELPERS ----------
-    function applyOptimisticUpdate(indices, newStatusResolver) {
-      for (const idx of indices) {
-        if (voters[idx]) {
-          const oldStatus = voters[idx].status || '';
-          pendingRollbackMap.set(idx, oldStatus);
-          voters[idx].status = newStatusResolver(oldStatus);
-          voters[idx].updatedAt = new Date().toISOString();
-        }
-      }
-      renderTable();
-    }
+      // ---------- CONSTANTS ----------
+      const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
+      const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
+      const FIREBASE_DB_URL = 'https://asmath-election-web-app-default-rtdb.firebaseio.com';
 
-    function rollbackOptimisticUpdate(indices) {
-      for (const idx of indices) {
-        if (voters[idx] && pendingRollbackMap.has(idx)) {
-          voters[idx].status = pendingRollbackMap.get(idx);
-        }
-      }
-      pendingRollbackMap.clear();
-      renderTable();
-      showToast('Update failed, changes reverted.', 'error');
-    }
+      // ---------- STATE ----------
+      let voters = [];
+      let totalVoters = 0;
+      let currentUser = null;
+      let isReadOnly = false;
+      let selectedIndices = new Set();
+      let singleSelectedIndex = -1;
+      let currentFilter = 'all';
+      let searchTerm = '';
+      let pollInterval = null;
+      let lastSnapshotTimestamp = 0;
+      let boothId = null;
+      let pendingRollbackMap = new Map();
 
-    // ---------- BULK UPDATE (CORRECTED LOGIC) ----------
-    async function bulkUpdateStatus(indices, newStatusResolver) {
-      if (isReadOnly || !currentUser || indices.length === 0) return;
+      // ---------- URL PARSING & VALIDATION ----------
+      const urlParams = new URLSearchParams(window.location.search);
+      boothId = urlParams.get('booth');
+      if (!boothId) { alert('No booth specified.'); window.location.href = 'index.html'; return; }
+      boothId = decodeURIComponent(boothId);
+      const mode = urlParams.get('mode') || 'edit';
+      isReadOnly = (mode === 'view');
+      const totalParam = urlParams.get('total');
+      totalVoters = Number.isInteger(parseInt(totalParam)) && parseInt(totalParam) > 0 ? parseInt(totalParam) : 0;
+      if (totalVoters === 0) { alert('Invalid voter count.'); window.location.href = 'index.html'; return; }
+      const assemblyParam = urlParams.get('assembly') || 'Unknown';
+      const boothNoParam = urlParams.get('boothNo') || '0';
 
-      // Store intended new statuses BEFORE mutating local state
-      const intendedStatuses = new Map();
-      for (const idx of indices) {
-        if (voters[idx]) {
-          const oldStatus = voters[idx].status || '';
-          intendedStatuses.set(idx, newStatusResolver(oldStatus));
-        }
+      displayAssembly.textContent = assemblyParam;
+      displayBooth.textContent = boothNoParam;
+      displayTotal.textContent = totalVoters;
+
+      // ---------- UTILITY: TOAST ----------
+      function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
       }
 
-      // Apply optimistic UI
-      applyOptimisticUpdate(indices, newStatusResolver);
-
-      // Send updates in parallel
-      const results = await Promise.all(
-        Array.from(intendedStatuses.entries()).map(([idx, newStatus]) => updateVoterStatus(idx, newStatus))
-      );
-
-      if (results.some(success => !success)) {
-        rollbackOptimisticUpdate(indices);
-      } else {
-        pendingRollbackMap.clear();
-        setTimeout(() => fetchSnapshot(boothId), 2000);
-      }
-    }
-
-    // ---------- SNAPSHOT FETCH (FRESHNESS COMPARISON) ----------
-    async function fetchSnapshot(id) {
-      try {
-        const res = await fetch(`${CDN_BASE}/${id.toLowerCase()}.json`);
-        if (!res.ok) throw new Error('Snapshot not found');
-        const data = await res.json();
-        const snapshotTime = Number(data.generatedAt) || 0;
-        if (snapshotTime > lastSnapshotTimestamp) {
-          lastSnapshotTimestamp = snapshotTime;
-          displayAssembly.textContent = data.assemblyName || assemblyParam;
-          displayBooth.textContent = data.boothNo || boothNoParam;
-          totalVoters = data.votersCount || totalVoters;
-          displayTotal.textContent = totalVoters;
-          voters = (data.voters || []).map((v, idx) => ({ ...v, index: idx }));
-          renderTable();
-        }
-      } catch (error) {
-        console.error('Snapshot fetch failed:', error);
-      }
-    }
-
-    function startPolling(id) {
-      stopPolling();
-      fetchSnapshot(id);
-      pollInterval = setInterval(() => fetchSnapshot(id), isReadOnly ? 10000 : 5000);
-    }
-
-    // ---------- RENDERING ----------
-    function computeStats() {
-      let our = 0, polled = 0, ourPolled = 0;
-      voters.forEach(v => {
-        if (v.status === 'our') our++;
-        else if (v.status === 'polled') polled++;
-        else if (v.status === 'ourpolled') ourPolled++;
-      });
-      return {
-        our: our + ourPolled, polled: polled + ourPolled, ourPolled,
-        ourBalance: our, totalBalance: totalVoters - (polled + ourPolled), totalVoters
+      // ---------- SAFE HTML ESCAPE ----------
+      const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
       };
-    }
 
-    function renderStats() {
-      const s = computeStats();
-      const p = v => totalVoters ? ((v/totalVoters)*100).toFixed(1)+'%' : '0.0%';
-      statsContainer.innerHTML = `
-        <div class="stat-card"><div class="stat-value stat-our">${s.our}<span class="stat-percent">${p(s.our)}</span></div><div class="stat-label">Our Votes</div></div>
-        <div class="stat-card"><div class="stat-value stat-polled">${s.polled}<span class="stat-percent">${p(s.polled)}</span></div><div class="stat-label">Total Polled</div></div>
-        <div class="stat-card"><div class="stat-value stat-ourpolled">${s.ourPolled}<span class="stat-percent">${p(s.ourPolled)}</span></div><div class="stat-label">Our Polled</div></div>
-        <div class="stat-card"><div class="stat-value stat-balance">${s.ourBalance}<span class="stat-percent">${p(s.ourBalance)}</span></div><div class="stat-label">Our Balance</div></div>
-        <div class="stat-card"><div class="stat-value">${s.totalBalance}<span class="stat-percent">${p(s.totalBalance)}</span></div><div class="stat-label">Total Balance</div></div>
-      `;
-    }
-
-    function getFilteredVoters() {
-      let filtered = voters.map((v, i) => ({ ...v, originalIndex: i }));
-      if (currentFilter !== 'all') filtered = filtered.filter(v => currentFilter === 'none' ? !v.status : v.status === currentFilter);
-      if (searchTerm) {
-        const t = searchTerm.toLowerCase();
-        filtered = filtered.filter(v => (v.originalIndex+1).toString().includes(t) || (v.status||'unmarked').toLowerCase().includes(t));
-      }
-      return filtered;
-    }
-
-    function renderTable() {
-      if (!voters.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>`; renderStats(); return; }
-      const filtered = getFilteredVoters();
-      if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">No voters match</td></tr>`; renderStats(); return; }
-
-      const allFilteredIndices = filtered.map(item => item.originalIndex);
-      const isAllSelected = allFilteredIndices.length > 0 && allFilteredIndices.every(idx => selectedIndices.has(idx));
-      selectAllCheckbox.checked = isAllSelected;
-      selectAllCheckbox.indeterminate = !isAllSelected && allFilteredIndices.some(idx => selectedIndices.has(idx));
-
-      // Build rows using safe escaping
-      const rowsHtml = filtered.map(item => {
-        const idx = item.originalIndex, s = item.status;
-        const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
-        const isChecked = selectedIndices.has(idx);
-        const isSingle = (singleSelectedIndex === idx && selectedIndices.size === 0);
-        const rowClass = `voter-row ${isChecked ? 'checked-row' : (isSingle ? 'selected-row' : '')}`;
-        let slClass = 'sl-col';
-        if (s === 'our') slClass += ' sl-our';
-        else if (s === 'polled') slClass += ' sl-polled';
-        else if (s === 'ourpolled') slClass += ' sl-ourpolled';
-        const statusDisplay = s ? s.toUpperCase() : '—';
-        return `<tr class="${rowClass}" data-index="${idx}">
-          <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''}></td>
-          <td class="${slClass}">${idx+1}</td>
-          <td><span class="status-badge status-${s || 'none'}">${escapeHtml(statusDisplay)}</span></td>
-          <td>${escapeHtml(updated)}</td>
-        </tr>`;
-      }).join('');
-      tbody.innerHTML = rowsHtml;
-
-      selectedInfo.textContent = selectedIndices.size ? `${selectedIndices.size} voter(s) selected` :
-                                 (singleSelectedIndex !== -1 ? `Selected: Voter #${singleSelectedIndex+1}` : 'No voter selected');
-      renderStats();
-    }
-
-    function applyReadOnlyMode() {
-      const canEdit = !isReadOnly && currentUser;
-      readonlyIndicator.style.display = isReadOnly ? 'inline-flex' : 'none';
-      [markOurBtn, markPolledBtn, removeStatusBtn, resetAllBtn].forEach(b => b.disabled = !canEdit);
-      deselectAllBtn.disabled = selectAllCheckbox.disabled = !canEdit;
-      // Checkboxes are already disabled via renderTable template
-      backBtn.textContent = isReadOnly ? 'Back to Setup' : 'Change Booth';
-    }
-
-    function getActionIndices() {
-      return selectedIndices.size ? Array.from(selectedIndices) : (singleSelectedIndex !== -1 ? [singleSelectedIndex] : []);
-    }
-
-    async function performAction(statusResolver) {
-      const indices = getActionIndices();
-      if (!indices.length) { alert('Select at least one voter.'); return; }
-      const filtered = getFilteredVoters();
-      if (indices.length === filtered.length && filtered.length > 0) {
-        if (!confirm(`⚠️ Update ALL ${filtered.length} voters?`)) return;
-      }
-      await bulkUpdateStatus(indices, statusResolver);
-      selectedIndices.clear();
-      singleSelectedIndex = -1;
-      renderTable();
-    }
-
-    // ---------- EVENT LISTENERS ----------
-    function setupEventListeners() {
-      tbody.addEventListener('change', e => {
-        if (!e.target.classList.contains('voter-checkbox') || isReadOnly) return;
-        const idx = +e.target.dataset.index;
-        e.target.checked ? selectedIndices.add(idx) : selectedIndices.delete(idx);
-        singleSelectedIndex = -1;
-        renderTable();
-      });
-      selectAllCheckbox.addEventListener('change', e => {
-        if (isReadOnly) return;
-        const filtered = getFilteredVoters();
-        filtered.forEach(item => e.target.checked ? selectedIndices.add(item.originalIndex) : selectedIndices.delete(item.originalIndex));
-        singleSelectedIndex = -1;
-        renderTable();
-      });
-      deselectAllBtn.addEventListener('click', () => { if (!isReadOnly) { selectedIndices.clear(); singleSelectedIndex = -1; renderTable(); } });
-      tbody.addEventListener('click', e => {
-        if (e.target.type === 'checkbox' || isReadOnly || !currentUser) return;
-        const row = e.target.closest('tr.voter-row');
-        if (!row || selectedIndices.size) return;
-        singleSelectedIndex = +row.dataset.index;
-        renderTable();
-      });
-      tbody.addEventListener('dblclick', e => {
-        if (isReadOnly || !currentUser) return;
-        const row = e.target.closest('tr.voter-row');
-        if (!row || selectedIndices.size) return;
-        const idx = +row.dataset.index;
-        const cur = voters[idx]?.status || '';
-        const newStatus = cur === 'our' ? '' : (cur === 'polled' ? 'ourpolled' : (cur === 'ourpolled' ? 'polled' : 'our'));
-        // Optimistic double-click
-        bulkUpdateStatus([idx], () => newStatus);
-        singleSelectedIndex = idx;
-        renderTable();
-      });
-      markOurBtn.addEventListener('click', () => performAction(cur => cur === 'polled' ? 'ourpolled' : 'our'));
-      markPolledBtn.addEventListener('click', () => performAction(cur => cur === 'our' ? 'ourpolled' : 'polled'));
-      removeStatusBtn.addEventListener('click', () => performAction(() => ''));
-      filterBtns.forEach(b => b.addEventListener('click', () => {
-        filterBtns.forEach(x => x.classList.remove('active'));
-        b.classList.add('active');
-        currentFilter = b.dataset.filter;
-        renderTable();
-      }));
-      searchInput.addEventListener('input', e => { searchTerm = e.target.value; renderTable(); });
-      resetAllBtn.addEventListener('click', async () => {
-        if (isReadOnly || !currentUser) return;
-        if (!confirm('Reset all voter statuses?')) return;
-        const indices = Array.from({length: totalVoters}, (_,i) => i);
-        await bulkUpdateStatus(indices, () => '');
-      });
-      shareViewLinkBtn.addEventListener('click', () => {
-        const url = `${location.origin}${location.pathname}?booth=${encodeURIComponent(boothId)}&mode=view`;
-        navigator.clipboard.writeText(url).then(() => showToast('📋 Viewer link copied!', 'success')).catch(() => prompt('Copy:', url));
-      });
-      backBtn.addEventListener('click', () => location.href = 'index.html');
-      logoutBtn.addEventListener('click', async () => {
-        if (confirm('Are you sure you want to log out?')) {
-          stopPolling();
-          await signOutUser(auth);
+      // ---------- STOP POLLING ----------
+      function stopPolling() {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
         }
+      }
+
+      // ---------- ENSURE BOOTH EXISTS ----------
+      async function ensureBoothExists() {
+        const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`);
+        if ((await checkRes.json())) return;
+        await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`, {
+          method: 'PUT',
+          body: JSON.stringify({ assemblyName: assemblyParam, boothNo: boothNoParam, votersCount: totalVoters })
+        });
+        const votersPayload = {};
+        for (let i = 0; i < totalVoters; i++) votersPayload[i] = { status: '', updatedAt: null };
+        await fetch(`${FIREBASE_DB_URL}/booths/${boothId}/voters.json`, { method: 'PUT', body: JSON.stringify(votersPayload) });
+      }
+
+      // ---------- UPDATE SINGLE VOTER ----------
+      async function updateVoterStatus(index, newStatus) {
+        if (isReadOnly || !currentUser) return false;
+        try {
+          const res = await fetch(UPDATE_WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ boothId, voterIndex: index, newStatus })
+          });
+          if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
+          return true;
+        } catch (error) {
+          console.error('Update error:', error);
+          return false;
+        }
+      }
+
+      // ---------- OPTIMISTIC UI ----------
+      function applyOptimisticUpdate(indices, newStatusResolver) {
+        for (const idx of indices) {
+          if (voters[idx]) {
+            const oldStatus = voters[idx].status || '';
+            pendingRollbackMap.set(idx, oldStatus);
+            voters[idx].status = newStatusResolver(oldStatus);
+            voters[idx].updatedAt = new Date().toISOString();
+          }
+        }
+        renderTable();
+      }
+
+      function rollbackOptimisticUpdate(indices) {
+        for (const idx of indices) {
+          if (voters[idx] && pendingRollbackMap.has(idx)) {
+            voters[idx].status = pendingRollbackMap.get(idx);
+          }
+        }
+        pendingRollbackMap.clear();
+        renderTable();
+        showToast('Update failed, changes reverted.', 'error');
+      }
+
+      // ---------- BULK UPDATE (CORRECTED) ----------
+      async function bulkUpdateStatus(indices, newStatusResolver) {
+        if (isReadOnly || !currentUser || indices.length === 0) return;
+
+        const intendedStatuses = new Map();
+        for (const idx of indices) {
+          if (voters[idx]) {
+            const oldStatus = voters[idx].status || '';
+            intendedStatuses.set(idx, newStatusResolver(oldStatus));
+          }
+        }
+
+        applyOptimisticUpdate(indices, newStatusResolver);
+
+        const results = await Promise.all(
+          Array.from(intendedStatuses.entries()).map(([idx, newStatus]) => updateVoterStatus(idx, newStatus))
+        );
+
+        if (results.some(success => !success)) {
+          rollbackOptimisticUpdate(indices);
+        } else {
+          pendingRollbackMap.clear();
+          setTimeout(() => fetchSnapshot(boothId), 2000);
+        }
+      }
+
+      // ---------- SNAPSHOT FETCH ----------
+      async function fetchSnapshot(id) {
+        try {
+          const res = await fetch(`${CDN_BASE}/${id.toLowerCase()}.json`);
+          if (!res.ok) throw new Error('Snapshot not found');
+          const data = await res.json();
+          const snapshotTime = Number(data.generatedAt) || 0;
+          if (snapshotTime > lastSnapshotTimestamp) {
+            lastSnapshotTimestamp = snapshotTime;
+            displayAssembly.textContent = data.assemblyName || assemblyParam;
+            displayBooth.textContent = data.boothNo || boothNoParam;
+            totalVoters = data.votersCount || totalVoters;
+            displayTotal.textContent = totalVoters;
+            voters = (data.voters || []).map((v, idx) => ({ ...v, index: idx }));
+            renderTable();
+          }
+        } catch (error) {
+          console.error('Snapshot fetch failed:', error);
+        }
+      }
+
+      function startPolling(id) {
+        stopPolling();
+        fetchSnapshot(id);
+        pollInterval = setInterval(() => fetchSnapshot(id), isReadOnly ? 10000 : 5000);
+      }
+
+      // ---------- RENDERING ----------
+      function computeStats() {
+        let our = 0, polled = 0, ourPolled = 0;
+        voters.forEach(v => {
+          if (v.status === 'our') our++;
+          else if (v.status === 'polled') polled++;
+          else if (v.status === 'ourpolled') ourPolled++;
+        });
+        return {
+          our: our + ourPolled, polled: polled + ourPolled, ourPolled,
+          ourBalance: our, totalBalance: totalVoters - (polled + ourPolled), totalVoters
+        };
+      }
+
+      function renderStats() {
+        const s = computeStats();
+        const p = v => totalVoters ? ((v/totalVoters)*100).toFixed(1)+'%' : '0.0%';
+        statsContainer.innerHTML = `
+          <div class="stat-card"><div class="stat-value stat-our">${s.our}<span class="stat-percent">${p(s.our)}</span></div><div class="stat-label">Our Votes</div></div>
+          <div class="stat-card"><div class="stat-value stat-polled">${s.polled}<span class="stat-percent">${p(s.polled)}</span></div><div class="stat-label">Total Polled</div></div>
+          <div class="stat-card"><div class="stat-value stat-ourpolled">${s.ourPolled}<span class="stat-percent">${p(s.ourPolled)}</span></div><div class="stat-label">Our Polled</div></div>
+          <div class="stat-card"><div class="stat-value stat-balance">${s.ourBalance}<span class="stat-percent">${p(s.ourBalance)}</span></div><div class="stat-label">Our Balance</div></div>
+          <div class="stat-card"><div class="stat-value">${s.totalBalance}<span class="stat-percent">${p(s.totalBalance)}</span></div><div class="stat-label">Total Balance</div></div>
+        `;
+      }
+
+      function getFilteredVoters() {
+        let filtered = voters.map((v, i) => ({ ...v, originalIndex: i }));
+        if (currentFilter !== 'all') filtered = filtered.filter(v => currentFilter === 'none' ? !v.status : v.status === currentFilter);
+        if (searchTerm) {
+          const t = searchTerm.toLowerCase();
+          filtered = filtered.filter(v => (v.originalIndex+1).toString().includes(t) || (v.status||'unmarked').toLowerCase().includes(t));
+        }
+        return filtered;
+      }
+
+      function renderTable() {
+        if (!voters.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>`; renderStats(); return; }
+        const filtered = getFilteredVoters();
+        if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">No voters match</td></tr>`; renderStats(); return; }
+
+        const allFilteredIndices = filtered.map(item => item.originalIndex);
+        const isAllSelected = allFilteredIndices.length > 0 && allFilteredIndices.every(idx => selectedIndices.has(idx));
+        selectAllCheckbox.checked = isAllSelected;
+        selectAllCheckbox.indeterminate = !isAllSelected && allFilteredIndices.some(idx => selectedIndices.has(idx));
+
+        const rowsHtml = filtered.map(item => {
+          const idx = item.originalIndex, s = item.status;
+          const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+          const isChecked = selectedIndices.has(idx);
+          const isSingle = (singleSelectedIndex === idx && selectedIndices.size === 0);
+          const rowClass = `voter-row ${isChecked ? 'checked-row' : (isSingle ? 'selected-row' : '')}`;
+          let slClass = 'sl-col';
+          if (s === 'our') slClass += ' sl-our';
+          else if (s === 'polled') slClass += ' sl-polled';
+          else if (s === 'ourpolled') slClass += ' sl-ourpolled';
+          const statusDisplay = s ? s.toUpperCase() : '—';
+          return `<tr class="${rowClass}" data-index="${idx}">
+            <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''}></td>
+            <td class="${slClass}">${idx+1}</td>
+            <td><span class="status-badge status-${s || 'none'}">${escapeHtml(statusDisplay)}</span></td>
+            <td>${escapeHtml(updated)}</td>
+          </tr>`;
+        }).join('');
+        tbody.innerHTML = rowsHtml;
+
+        selectedInfo.textContent = selectedIndices.size ? `${selectedIndices.size} voter(s) selected` :
+                                   (singleSelectedIndex !== -1 ? `Selected: Voter #${singleSelectedIndex+1}` : 'No voter selected');
+        renderStats();
+      }
+
+      function applyReadOnlyMode() {
+        const canEdit = !isReadOnly && currentUser;
+        readonlyIndicator.style.display = isReadOnly ? 'inline-flex' : 'none';
+        [markOurBtn, markPolledBtn, removeStatusBtn, resetAllBtn].forEach(b => b.disabled = !canEdit);
+        deselectAllBtn.disabled = selectAllCheckbox.disabled = !canEdit;
+        backBtn.textContent = isReadOnly ? 'Back to Setup' : 'Change Booth';
+      }
+
+      function getActionIndices() {
+        return selectedIndices.size ? Array.from(selectedIndices) : (singleSelectedIndex !== -1 ? [singleSelectedIndex] : []);
+      }
+
+      async function performAction(statusResolver) {
+        const indices = getActionIndices();
+        if (!indices.length) { alert('Select at least one voter.'); return; }
+        const filtered = getFilteredVoters();
+        if (indices.length === filtered.length && filtered.length > 0) {
+          if (!confirm(`⚠️ Update ALL ${filtered.length} voters?`)) return;
+        }
+        await bulkUpdateStatus(indices, statusResolver);
+        selectedIndices.clear();
+        singleSelectedIndex = -1;
+        renderTable();
+      }
+
+      // ---------- EVENT LISTENERS ----------
+      function setupEventListeners() {
+        tbody.addEventListener('change', e => {
+          if (!e.target.classList.contains('voter-checkbox') || isReadOnly) return;
+          const idx = +e.target.dataset.index;
+          e.target.checked ? selectedIndices.add(idx) : selectedIndices.delete(idx);
+          singleSelectedIndex = -1;
+          renderTable();
+        });
+        selectAllCheckbox.addEventListener('change', e => {
+          if (isReadOnly) return;
+          const filtered = getFilteredVoters();
+          filtered.forEach(item => e.target.checked ? selectedIndices.add(item.originalIndex) : selectedIndices.delete(item.originalIndex));
+          singleSelectedIndex = -1;
+          renderTable();
+        });
+        deselectAllBtn.addEventListener('click', () => { if (!isReadOnly) { selectedIndices.clear(); singleSelectedIndex = -1; renderTable(); } });
+        tbody.addEventListener('click', e => {
+          if (e.target.type === 'checkbox' || isReadOnly || !currentUser) return;
+          const row = e.target.closest('tr.voter-row');
+          if (!row || selectedIndices.size) return;
+          singleSelectedIndex = +row.dataset.index;
+          renderTable();
+        });
+        tbody.addEventListener('dblclick', e => {
+          if (isReadOnly || !currentUser) return;
+          const row = e.target.closest('tr.voter-row');
+          if (!row || selectedIndices.size) return;
+          const idx = +row.dataset.index;
+          const cur = voters[idx]?.status || '';
+          const newStatus = cur === 'our' ? '' : (cur === 'polled' ? 'ourpolled' : (cur === 'ourpolled' ? 'polled' : 'our'));
+          bulkUpdateStatus([idx], () => newStatus);
+          singleSelectedIndex = idx;
+          renderTable();
+        });
+        markOurBtn.addEventListener('click', () => performAction(cur => cur === 'polled' ? 'ourpolled' : 'our'));
+        markPolledBtn.addEventListener('click', () => performAction(cur => cur === 'our' ? 'ourpolled' : 'polled'));
+        removeStatusBtn.addEventListener('click', () => performAction(() => ''));
+        filterBtns.forEach(b => b.addEventListener('click', () => {
+          filterBtns.forEach(x => x.classList.remove('active'));
+          b.classList.add('active');
+          currentFilter = b.dataset.filter;
+          renderTable();
+        }));
+        searchInput.addEventListener('input', e => { searchTerm = e.target.value; renderTable(); });
+        resetAllBtn.addEventListener('click', async () => {
+          if (isReadOnly || !currentUser) return;
+          if (!confirm('Reset all voter statuses?')) return;
+          const indices = Array.from({length: totalVoters}, (_,i) => i);
+          await bulkUpdateStatus(indices, () => '');
+        });
+        shareViewLinkBtn.addEventListener('click', () => {
+          const url = `${location.origin}${location.pathname}?booth=${encodeURIComponent(boothId)}&mode=view`;
+          navigator.clipboard.writeText(url).then(() => showToast('📋 Viewer link copied!', 'success')).catch(() => prompt('Copy:', url));
+        });
+        backBtn.addEventListener('click', () => location.href = 'index.html');
+        logoutBtn.addEventListener('click', async () => {
+          if (confirm('Are you sure you want to log out?')) {
+            stopPolling();
+            await signOutUser(auth);
+          }
+        });
+        window.addEventListener('beforeunload', stopPolling);
+        window.addEventListener('pagehide', stopPolling);
+      }
+
+      // ---------- AUTH OBSERVER ----------
+      onAuthStateChanged(auth, async (user) => {
+        currentUser = user;
+        const needsAuth = !isReadOnly && !user;
+        loginCard.style.display = needsAuth ? 'block' : 'none';
+        voterCard.style.display = needsAuth ? 'none' : 'block';
+        logoutBtn.style.display = (user && !isReadOnly) ? 'inline-flex' : 'none';
+        
+        stopPolling();
+        if (!needsAuth) {
+          if (!isReadOnly && user) await ensureBoothExists();
+          startPolling(boothId);
+        }
+        applyReadOnlyMode();
       });
-      window.addEventListener('beforeunload', stopPolling);
-      window.addEventListener('pagehide', stopPolling);
+
+      loginBtn.addEventListener('click', async () => {
+        const email = loginEmail.value.trim(), password = loginPassword.value;
+        if (!email || !password) { loginError.textContent = 'Please enter both email and password.'; return; }
+        try {
+          await signIn(auth, email, password);
+          loginError.textContent = ''; loginEmail.value = loginPassword.value = '';
+        } catch (error) { loginError.textContent = error.message; }
+      });
+
+      setupEventListeners();
     }
 
-    // ---------- AUTH OBSERVER ----------
-    onAuthStateChanged(auth, async (user) => {
-      currentUser = user;
-      const needsAuth = !isReadOnly && !user;
-      loginCard.style.display = needsAuth ? 'block' : 'none';
-      voterCard.style.display = needsAuth ? 'none' : 'block';
-      logoutBtn.style.display = (user && !isReadOnly) ? 'inline-flex' : 'none';
-      
-      stopPolling();
-      if (!needsAuth) {
-        if (!isReadOnly && user) await ensureBoothExists();
-        startPolling(boothId);
-      }
-      applyReadOnlyMode();
-    });
-
-    loginBtn.addEventListener('click', async () => {
-      const email = loginEmail.value.trim(), password = loginPassword.value;
-      if (!email || !password) { loginError.textContent = 'Please enter both email and password.'; return; }
-      try {
-        await signIn(auth, email, password);
-        loginError.textContent = ''; loginEmail.value = loginPassword.value = '';
-      } catch (error) { loginError.textContent = error.message; }
-    });
-
-    setupEventListeners();
+    initWhenReady();
   })();
 </script>
 </body>
