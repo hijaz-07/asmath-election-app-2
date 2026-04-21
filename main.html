@@ -363,7 +363,7 @@
       await fetch(`${FIREBASE_DB_URL}/booths/${state.boothId}/voters.json`, { method: 'PUT', body: JSON.stringify(votersPayload) });
     }
 
-    // ---------- SNAPSHOT FETCH ----------
+    // ---------- SNAPSHOT FETCH (CORS FIXED) ----------
     async function fetchSnapshot(options = {}) {
       if (state.isFetching) return false;
       state.isFetching = true;
