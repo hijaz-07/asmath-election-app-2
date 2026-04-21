@@ -2,11 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-  <title>Live Voter List · Enterprise</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Live booth dashboard for election voter status tracking with guarded editing and shareable read-only snapshots.">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="color-scheme" content="dark">
+  <title>Live Voter List - Enterprise</title>
   <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- Firebase Auth SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -21,617 +26,2250 @@
       appId: "1:141829119383:web:62bd044daba925776978d2"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    
-    window.auth = auth;
-    window.firebaseSignIn = signInWithEmailAndPassword;
-    window.firebaseSignOut = signOut;
-    window.firebaseOnAuthStateChanged = onAuthStateChanged;
+    const firebaseApp = initializeApp(firebaseConfig);
+    const auth = getAuth(firebaseApp);
 
-    console.log('✅ Firebase Auth initialized');
+    window.firebaseServices = {
+      auth,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    };
+
+    window.dispatchEvent(new CustomEvent("firebase-ready"));
+    console.info("Firebase Auth initialized");
   </script>
   <style>
-    /* ========== DESIGN SYSTEM (unchanged) ========== */
     :root {
-      --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
-      --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
-      --warning: #fbbf24; --shadow: 0 20px 60px rgba(0, 0, 0, 0.35); --our-highlight: #2563eb; --polled-highlight: #dc2626;
+      --bg-1: #081120;
+      --bg-2: #101b31;
+      --bg-3: #1b2742;
+      --card: rgba(10, 17, 32, 0.74);
+      --card-border: rgba(148, 163, 184, 0.18);
+      --card-strong: rgba(255, 255, 255, 0.1);
+      --text: #e5edf8;
+      --muted: #9fb1c9;
+      --accent: #40c9ff;
+      --accent-strong: #1d9bf0;
+      --accent-2: #7c5cff;
+      --success: #34d399;
+      --danger: #fb7185;
+      --warning: #fbbf24;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+      --our-highlight: #2563eb;
+      --polled-highlight: #dc2626;
       --ourpolled-highlight: #16a34a;
+      --surface: rgba(15, 23, 42, 0.72);
+      --surface-2: rgba(15, 23, 42, 0.92);
+      --focus-ring: 0 0 0 3px rgba(64, 201, 255, 0.3);
+      --transition: 180ms ease;
+      --radius-lg: 28px;
+      --radius-md: 18px;
+      --radius-sm: 14px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    *::selection {
+      background: rgba(64, 201, 255, 0.28);
+      color: #ffffff;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
-      min-height: 100vh; font-family: 'Inter', system-ui, sans-serif;
-      background: radial-gradient(circle at top left, rgba(56,189,248,0.22), transparent 30%),
-                  radial-gradient(circle at bottom right, rgba(139,92,246,0.2), transparent 28%),
-                  linear-gradient(135deg, var(--bg1), var(--bg2));
-      color: var(--text); padding: 24px; display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh;
+      min-height: 100svh;
+      font-family: "Manrope", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 14% 14%, rgba(64, 201, 255, 0.2), transparent 24%),
+        radial-gradient(circle at 88% 18%, rgba(124, 92, 255, 0.16), transparent 25%),
+        radial-gradient(circle at 72% 78%, rgba(52, 211, 153, 0.12), transparent 26%),
+        linear-gradient(140deg, var(--bg-1), var(--bg-2) 55%, var(--bg-3));
+      padding: 24px;
+      display: flex;
+      justify-content: center;
     }
-    .app-container { width: 100%; max-width: 1400px; }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+      background-size: 34px 34px;
+      mask-image: radial-gradient(circle at center, black 42%, transparent 85%);
+      pointer-events: none;
+      opacity: 0.45;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 1480px;
+      position: relative;
+      z-index: 1;
+    }
+
     .glass-card {
-      background: var(--card); border: 1px solid var(--card-border); backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px); border-radius: 28px; box-shadow: var(--shadow);
-      padding: 24px 28px; margin-bottom: 24px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 26px 30px;
+      margin-bottom: 22px;
     }
+
+    .hero-card {
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -10% -35% auto;
+      width: 340px;
+      height: 340px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(64, 201, 255, 0.22), transparent 68%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.74rem;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 20px rgba(64, 201, 255, 0.6);
+    }
+
     .main-heading {
-      font-size: clamp(1.5rem, 3vw, 2.2rem); line-height: 1.15; margin-bottom: 10px;
-      background: linear-gradient(135deg, #fff, #cbd5e1); -webkit-background-clip: text; background-clip: text;
-      color: transparent; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 18px;
+      font-size: clamp(1.8rem, 3.2vw, 3rem);
+      line-height: 1.08;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff, #d7e5ff 50%, #9fdfff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 10px;
     }
-    .booth-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
-    .booth-info h1 { font-size: 1.8rem; background: linear-gradient(135deg, #fff, #cbd5e1); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 6px; }
-    .booth-meta { display: flex; gap: 24px; color: var(--muted); font-size: 1rem; }
-    .booth-meta i { margin-right: 6px; color: var(--accent); }
-    .action-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .page-subtitle {
+      max-width: 860px;
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 26px;
+    }
+
+    .booth-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.95fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .booth-info h2 {
+      font-size: clamp(1.4rem, 2.3vw, 2.1rem);
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+
+    .booth-meta,
+    .system-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .booth-meta {
+      margin-bottom: 18px;
+    }
+
+    .meta-pill,
+    .system-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .meta-pill strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .meta-pill i,
+    .system-chip i {
+      color: var(--accent);
+    }
+
+    .action-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
     .btn {
-      border: none; border-radius: 16px; padding: 12px 20px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
-      font-size: 0.95rem; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1);
-      display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-sm);
+      padding: 13px 18px;
+      font-weight: 700;
+      font-size: 0.94rem;
+      cursor: pointer;
+      transition:
+        transform var(--transition),
+        background var(--transition),
+        border-color var(--transition),
+        box-shadow var(--transition),
+        opacity var(--transition);
+      background: rgba(255, 255, 255, 0.06);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      min-height: 48px;
     }
-    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow: 0 8px 20px rgba(56,189,248,0.2); border: none; }
-    .btn-outline { background: transparent; border: 1px solid var(--card-border); }
-    .btn-outline:hover { background: rgba(255,255,255,0.08); }
-    .btn-primary:hover { transform: translateY(-2px); filter: brightness(1.05); }
-    .btn-danger { border-color: var(--danger); color: var(--danger); }
-    .btn-danger:hover { background: rgba(251,113,133,0.15); }
-    .btn:disabled { opacity: 0.5; pointer-events: none; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 16px; margin: 20px 0 10px; }
-    .stat-card { background: rgba(15,23,42,0.6); border-radius: 20px; padding: 16px 12px; border: 1px solid rgba(255,255,255,0.06); text-align: center; }
-    .stat-value { font-size: 2.2rem; font-weight: 700; line-height: 1.2; }
-    .stat-percent { font-size: 0.9rem; font-weight: 400; margin-left: 6px; opacity: 0.8; }
-    .stat-label { color: var(--muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
-    .stat-our { color: var(--success); } .stat-polled { color: var(--danger); } .stat-ourpolled { color: var(--success); } .stat-balance { color: var(--accent); }
-    .controls-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-    .search-wrapper { display: flex; align-items: center; background: rgba(15,23,42,0.6); border-radius: 40px; padding: 4px 4px 4px 18px; border: 1px solid var(--card-border); flex: 1 1 260px; }
-    .search-wrapper i { color: var(--muted); }
-    .search-wrapper input { background: transparent; border: none; padding: 12px 12px; color: var(--text); font-size: 1rem; width: 100%; outline: none; }
-    .filter-group { display: flex; gap: 8px; flex-wrap: wrap; }
-    .filter-btn { padding: 8px 16px; border-radius: 30px; background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); color: var(--muted); cursor: pointer; font-weight: 500; transition: all 0.2s; }
-    .filter-btn.active { background: var(--accent); color: #0f172a; border-color: var(--accent); }
-    .voter-table-container { max-height: 600px; overflow-y: auto; border-radius: 20px; background: rgba(0,0,0,0.2); margin-top: 8px; scroll-behavior: smooth; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-    th { position: sticky; top: 0; background: #1e293b; padding: 16px 12px; text-align: left; color: #cbd5e1; font-weight: 600; backdrop-filter: blur(10px); z-index: 2; }
-    td { padding: 12px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    tr.voter-row { cursor: pointer; transition: background 0.15s; }
-    tr.voter-row:hover { background: rgba(255,255,255,0.06) !important; }
-    tr.voter-row.checked-row { outline: 2px solid var(--accent); outline-offset: -2px; background: rgba(56,189,248,0.15) !important; }
-    tr.selected-row { outline: 2px solid var(--accent); outline-offset: -2px; background: rgba(56,189,248,0.15) !important; }
-    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 40px; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
-    .status-our { background: rgba(37,99,235,0.3); color: #bfdbfe; } .status-polled { background: rgba(220,38,38,0.3); color: #fecaca; }
-    .status-ourpolled { background: rgba(22,163,74,0.3); color: #bbf7d0; } .status-none { color: var(--muted); }
-    td.sl-col { font-weight: 600; transition: background 0.2s; }
-    .sl-our { background-color: var(--our-highlight) !important; color: white; } .sl-polled { background-color: var(--polled-highlight) !important; color: white; }
-    .sl-ourpolled { background-color: var(--ourpolled-highlight) !important; color: white; }
-    .empty-message { text-align: center; padding: 48px; color: var(--muted); }
-    .footer-note { display: flex; justify-content: space-between; margin-top: 16px; color: var(--muted); font-size: 0.85rem; }
-    .readonly-badge { background: var(--warning); color: #0f172a; padding: 4px 12px; border-radius: 40px; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; margin-left: 12px; }
-    .connection-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #4ade80; margin-right: 8px; box-shadow: 0 0 10px #4ade80; }
-    .login-card { max-width: 400px; margin: 0 auto; }
-    .login-card h2 { margin-bottom: 16px; font-size: 1.5rem; }
-    .login-card input { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--card-border); background: rgba(15,23,42,0.6); color: var(--text); font-size: 1rem; margin-bottom: 12px; }
-    .login-card .btn { width: 100%; justify-content: center; }
-    .voter-checkbox { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; transform: scale(1.2); margin: 0; vertical-align: middle; }
-    .select-all-checkbox { transform: scale(1.2); accent-color: var(--accent); cursor: pointer; }
-    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bg2); color: white; padding: 12px 24px; border-radius: 40px; box-shadow: var(--shadow); z-index: 9999; transition: opacity 0.3s; }
-    .toast.error { background: var(--danger); }
-    .toast.success { background: var(--success); }
-    /* ========== MOBILE OPTIMIZATIONS (unchanged) ========== */
-    @media (max-width: 768px) {
-      body { padding: 12px; }
-      .app-container { max-width: 100%; }
-      .glass-card { padding: 18px 16px; border-radius: 24px; margin-bottom: 16px; }
-      .main-heading { font-size: 1.5rem; padding-bottom: 12px; }
-      .booth-header { flex-direction: column; align-items: stretch; gap: 16px; }
-      .booth-info h1 { font-size: 1.5rem; }
-      .booth-meta { flex-wrap: wrap; gap: 12px; font-size: 0.9rem; }
-      .action-buttons { flex-direction: column; width: 100%; }
-      .action-buttons .btn { width: 100%; justify-content: center; padding: 16px 12px; font-size: 1rem; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .stat-card { padding: 12px 8px; }
-      .stat-value { font-size: 1.6rem; }
-      .stat-percent { font-size: 0.75rem; display: block; margin-left: 0; }
-      .stat-label { font-size: 0.75rem; }
-      .controls-bar { flex-direction: column; align-items: stretch; gap: 8px; }
-      .search-wrapper { height: 36px; padding: 2px 2px 2px 10px; border-radius: 30px; align-items: center; }
-      .search-wrapper i { font-size: 0.85rem; margin-right: 4px; }
-      .search-wrapper input { height: 100%; padding: 0 6px; font-size: 0.9rem; line-height: 1; }
-      .filter-group { justify-content: center; }
-      .filter-btn { padding: 8px 12px; font-size: 0.85rem; flex: 1 0 auto; }
-      .voter-actions { flex-wrap: wrap; }
-      .voter-actions .btn { flex: 1 1 calc(50% - 8px); padding: 14px 8px; font-size: 0.9rem; }
-      #selectedInfo { width: 100%; text-align: center; margin-left: 0 !important; margin-top: 8px; }
-      .voter-table-container { max-height: 450px; }
-      table { font-size: 0.85rem; }
-      th, td { padding: 12px 8px; }
-      th:first-child, td:first-child { padding: 8px 4px; width: 40px; }
-      .voter-checkbox { transform: scale(1); }
-      @media (max-width: 480px) {
-        th:nth-child(4), td:nth-child(4) { display: none; }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .btn:focus-visible,
+    .filter-btn:focus-visible,
+    input:focus-visible,
+    tr.voter-row:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-color: transparent;
+      box-shadow: 0 12px 24px rgba(64, 201, 255, 0.18);
+      color: #081120;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border-color: var(--card-border);
+    }
+
+    .btn-outline:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .btn-danger {
+      color: #ffd9df;
+      border-color: rgba(251, 113, 133, 0.4);
+      background: rgba(251, 113, 133, 0.08);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(251, 113, 133, 0.14);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .stat-card {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.58));
+      border-radius: 22px;
+      padding: 18px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      min-height: 122px;
+    }
+
+    .stat-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 34%);
+      pointer-events: none;
+    }
+
+    .stat-value {
+      font-size: clamp(1.9rem, 3vw, 2.45rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .stat-percent {
+      display: inline-block;
+      margin-left: 7px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      opacity: 0.78;
+    }
+
+    .stat-label {
+      margin-top: 8px;
+      font-size: 0.84rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.83rem;
+      line-height: 1.4;
+    }
+
+    .stat-our {
+      color: var(--success);
+    }
+
+    .stat-polled {
+      color: var(--danger);
+    }
+
+    .stat-ourpolled {
+      color: #86efac;
+    }
+
+    .stat-balance {
+      color: var(--accent);
+    }
+
+    .system-chip {
+      min-height: 46px;
+      font-size: 0.9rem;
+    }
+
+    .system-chip[data-state="idle"] {
+      border-color: rgba(148, 163, 184, 0.2);
+    }
+
+    .system-chip[data-state="syncing"] {
+      border-color: rgba(251, 191, 36, 0.5);
+      color: #fde68a;
+    }
+
+    .system-chip[data-state="live"] {
+      border-color: rgba(52, 211, 153, 0.34);
+      color: #bbf7d0;
+    }
+
+    .system-chip[data-state="offline"],
+    .system-chip[data-state="error"] {
+      border-color: rgba(251, 113, 133, 0.4);
+      color: #fecdd3;
+    }
+
+    .connection-status {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #94a3b8;
+      box-shadow: 0 0 0 rgba(148, 163, 184, 0);
+      flex: 0 0 auto;
+    }
+
+    .system-chip[data-state="syncing"] .connection-status {
+      background: var(--warning);
+      box-shadow: 0 0 16px rgba(251, 191, 36, 0.7);
+      animation: pulse 1.4s infinite ease-in-out;
+    }
+
+    .system-chip[data-state="live"] .connection-status {
+      background: #4ade80;
+      box-shadow: 0 0 18px rgba(74, 222, 128, 0.76);
+    }
+
+    .system-chip[data-state="offline"] .connection-status,
+    .system-chip[data-state="error"] .connection-status {
+      background: var(--danger);
+      box-shadow: 0 0 16px rgba(251, 113, 133, 0.6);
+    }
+
+    .readonly-badge {
+      background: rgba(251, 191, 36, 0.16);
+      color: #fde68a;
+      border: 1px solid rgba(251, 191, 36, 0.38);
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .login-card {
+      max-width: 440px;
+      margin-inline: auto;
+    }
+
+    .login-card h2,
+    .section-title {
+      font-size: 1.35rem;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .section-subtitle,
+    .login-card p {
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .field-label {
+      display: block;
+      color: #d7e5ff;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    .input-shell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-radius: 16px;
+      border: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.78);
+      padding: 0 14px;
+    }
+
+    .input-shell i {
+      color: var(--muted);
+      flex: 0 0 auto;
+    }
+
+    .login-card input,
+    .search-wrapper input {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      outline: none;
+    }
+
+    .login-card input {
+      min-height: 52px;
+      padding: 14px 2px;
+    }
+
+    .inline-error {
+      min-height: 1.3rem;
+      color: #fecdd3;
+      font-size: 0.92rem;
+      margin-top: 8px;
+    }
+
+    .controls-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .controls-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .search-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.82);
+      border-radius: 999px;
+      padding: 0 16px;
+      border: 1px solid var(--card-border);
+      min-height: 52px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .search-wrapper:focus-within {
+      border-color: rgba(64, 201, 255, 0.42);
+      box-shadow: var(--focus-ring);
+    }
+
+    .search-wrapper i {
+      color: var(--muted);
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
+
+    .filter-btn {
+      padding: 10px 15px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+      transition:
+        background var(--transition),
+        border-color var(--transition),
+        color var(--transition),
+        transform var(--transition);
+    }
+
+    .filter-btn:hover {
+      transform: translateY(-1px);
+      color: var(--text);
+    }
+
+    .filter-btn.active,
+    .filter-btn[aria-pressed="true"] {
+      background: linear-gradient(135deg, rgba(64, 201, 255, 0.95), rgba(124, 92, 255, 0.95));
+      color: #081120;
+      border-color: transparent;
+    }
+
+    .voter-actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .selection-summary {
+      margin-left: auto;
+      color: var(--muted);
+      text-align: right;
+      line-height: 1.5;
+    }
+
+    .selection-summary strong {
+      color: var(--text);
+    }
+
+    .table-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .voter-table-container {
+      max-height: 620px;
+      overflow: auto;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(0, 0, 0, 0.22);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.94rem;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(16, 27, 49, 0.96);
+      backdrop-filter: blur(12px);
+      color: #d9e5f7;
+      text-align: left;
+      padding: 15px 12px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    tbody td {
+      padding: 13px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: middle;
+    }
+
+    tr.voter-row {
+      cursor: pointer;
+      transition: background var(--transition), outline-color var(--transition);
+    }
+
+    tr.voter-row:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    tr.voter-row.checked-row,
+    tr.voter-row.selected-row {
+      outline: 2px solid rgba(64, 201, 255, 0.75);
+      outline-offset: -2px;
+      background: rgba(64, 201, 255, 0.12);
+    }
+
+    td.sl-col {
+      font-weight: 800;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    .sl-our {
+      background: var(--our-highlight) !important;
+      color: #ffffff;
+    }
+
+    .sl-polled {
+      background: var(--polled-highlight) !important;
+      color: #ffffff;
+    }
+
+    .sl-ourpolled {
+      background: var(--ourpolled-highlight) !important;
+      color: #ffffff;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 114px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+
+    .status-our {
+      background: rgba(37, 99, 235, 0.24);
+      color: #bfdbfe;
+      border-color: rgba(96, 165, 250, 0.3);
+    }
+
+    .status-polled {
+      background: rgba(220, 38, 38, 0.22);
+      color: #fecaca;
+      border-color: rgba(248, 113, 113, 0.3);
+    }
+
+    .status-ourpolled {
+      background: rgba(22, 163, 74, 0.22);
+      color: #bbf7d0;
+      border-color: rgba(74, 222, 128, 0.28);
+    }
+
+    .status-none {
+      background: rgba(148, 163, 184, 0.12);
+      color: #cbd5e1;
+      border-color: rgba(148, 163, 184, 0.18);
+    }
+
+    .empty-message {
+      text-align: center;
+      padding: 56px 20px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .footer-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.87rem;
+      line-height: 1.55;
+    }
+
+    .footer-note span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast-region {
+      position: fixed;
+      inset: auto 20px 20px auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: min(360px, calc(100vw - 40px));
+      z-index: 9999;
+    }
+
+    .toast {
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.94);
+      box-shadow: var(--shadow);
+      color: #ffffff;
+      line-height: 1.45;
+      animation: slide-in 180ms ease;
+    }
+
+    .toast.success {
+      border-color: rgba(52, 211, 153, 0.36);
+      background: rgba(6, 78, 59, 0.94);
+    }
+
+    .toast.error {
+      border-color: rgba(251, 113, 133, 0.36);
+      background: rgba(127, 29, 29, 0.94);
+    }
+
+    .voter-checkbox,
+    .select-all-checkbox {
+      width: 19px;
+      height: 19px;
+      accent-color: var(--accent-strong);
+      cursor: pointer;
+      vertical-align: middle;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1;
       }
-      .login-card { max-width: 100%; margin: 0; }
-      .login-card h2 { font-size: 1.3rem; }
-      .login-card input { padding: 16px; font-size: 16px; }
-      .footer-note { flex-direction: column; align-items: center; gap: 8px; text-align: center; }
-      .readonly-badge { margin-left: 0; margin-top: 8px; }
+
+      50% {
+        transform: scale(1.14);
+        opacity: 0.7;
+      }
     }
-    @media (max-width: 480px) {
-      .stats-grid { grid-template-columns: 1fr; }
-      .booth-meta { flex-direction: column; gap: 6px; }
-      .filter-btn { font-size: 0.8rem; padding: 6px 10px; }
-      .btn { padding: 14px 10px; }
-      .search-wrapper { height: 32px; padding: 2px 2px 2px 8px; }
-      .search-wrapper input { font-size: 0.85rem; padding: 0 4px; }
+
+    @keyframes slide-in {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 1040px) {
+      .booth-header {
+        grid-template-columns: 1fr;
+      }
+
+      .action-buttons {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 14px;
+      }
+
+      .glass-card {
+        padding: 18px 16px;
+        border-radius: 24px;
+      }
+
+      .page-subtitle {
+        margin-bottom: 20px;
+      }
+
+      .search-row {
+        grid-template-columns: 1fr;
+      }
+
+      .action-buttons,
+      .voter-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .action-buttons .btn,
+      .voter-actions .btn {
+        width: 100%;
+      }
+
+      .selection-summary {
+        margin-left: 0;
+        text-align: left;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .voter-table-container {
+        max-height: 500px;
+      }
+
+      table {
+        font-size: 0.86rem;
+      }
+
+      thead th,
+      tbody td {
+        padding: 12px 9px;
+      }
+
+      .footer-note {
+        flex-direction: column;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .booth-meta,
+      .system-strip,
+      .filter-group {
+        gap: 8px;
+      }
+
+      .meta-pill,
+      .system-chip {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .status-badge {
+        min-width: 92px;
+        font-size: 0.72rem;
+      }
+
+      thead th:nth-child(4),
+      tbody td:nth-child(4) {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
     }
   </style>
 </head>
 <body>
-<div class="app-container">
-  <div class="glass-card">
-    <div class="main-heading">TAMIL NADU STATE ASSEMBLY ELECTION</div>
+<main class="app-container">
+  <section class="glass-card hero-card" aria-labelledby="pageTitle">
+    <p class="eyebrow">Live operations dashboard</p>
+    <h1 class="main-heading" id="pageTitle">Tamil Nadu State Assembly Election</h1>
+    <p class="page-subtitle">
+      High-visibility booth tracking with safer bulk updates, resilient polling, shareable read-only views,
+      and stronger accessibility defaults for real-world field use.
+    </p>
+
     <div class="booth-header">
       <div class="booth-info">
-        <h1 id="displayAssembly">Tamil Nadu Assembly</h1>
+        <h2 id="displayAssembly">Tamil Nadu Assembly</h2>
+
         <div class="booth-meta">
-          <span><i class="fas fa-map-pin"></i> Booth: <strong id="displayBooth">—</strong></span>
-          <span><i class="fas fa-users"></i> Total Voters: <strong id="displayTotal">0</strong></span>
-          <span id="readonlyIndicator" class="readonly-badge" style="display:none;"><i class="fas fa-lock"></i> Read‑Only</span>
-          <span id="connectionIndicator"><span class="connection-status"></span> Live</span>
+          <span class="meta-pill"><i class="fas fa-map-pin" aria-hidden="true"></i> Booth <strong id="displayBooth">-</strong></span>
+          <span class="meta-pill"><i class="fas fa-users" aria-hidden="true"></i> Total voters <strong id="displayTotal">0</strong></span>
+        </div>
+
+        <div class="system-strip">
+          <span class="system-chip" id="connectionIndicator" data-state="idle" role="status" aria-live="polite">
+            <span class="connection-status" aria-hidden="true"></span>
+            <span id="connectionLabel">Waiting for snapshot</span>
+          </span>
+          <span class="system-chip">
+            <i class="fas fa-clock" aria-hidden="true"></i>
+            <span id="lastSyncLabel">No sync yet</span>
+          </span>
+          <span id="readonlyIndicator" class="readonly-badge hidden">
+            <i class="fas fa-lock" aria-hidden="true"></i>
+            Read-only
+          </span>
         </div>
       </div>
-      <div class="action-buttons">
-        <button class="btn btn-outline" id="backToBoothBtn"><i class="fas fa-arrow-left"></i> Change Booth</button>
-        <button class="btn btn-primary" id="shareViewLinkBtn"><i class="fas fa-share-alt"></i> Share Snapshot</button>
-        <button class="btn btn-outline btn-danger" id="resetAllBtn"><i class="fas fa-undo-alt"></i> Reset List</button>
-        <button class="btn btn-outline" id="logoutBtn" style="display:none;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+
+      <div class="action-panel">
+        <div class="action-buttons">
+          <button class="btn btn-outline" id="backToBoothBtn" type="button"><i class="fas fa-arrow-left" aria-hidden="true"></i> Change Booth</button>
+          <button class="btn btn-outline" id="refreshBtn" type="button"><i class="fas fa-rotate" aria-hidden="true"></i> Refresh</button>
+          <button class="btn btn-primary" id="shareViewLinkBtn" type="button"><i class="fas fa-share-alt" aria-hidden="true"></i> Share Snapshot</button>
+          <button class="btn btn-danger" id="resetAllBtn" type="button"><i class="fas fa-undo-alt" aria-hidden="true"></i> Reset List</button>
+          <button class="btn btn-outline" id="logoutBtn" type="button" style="display: none;"><i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout</button>
+        </div>
       </div>
     </div>
-    <div class="stats-grid" id="statsContainer"></div>
-  </div>
 
-  <div class="glass-card login-card" id="loginCard" style="display: none;">
-    <h2><i class="fas fa-lock" style="margin-right: 8px;"></i> Editor Login</h2>
-    <p style="color: var(--muted); margin-bottom: 20px;">Enter the shared editor credentials to modify data.</p>
-    <input type="email" id="loginEmail" placeholder="Email" autocomplete="email" value="editor@election.local">
-    <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
-    <button class="btn btn-primary" id="loginBtn">Log In</button>
-    <div id="loginError" style="color: var(--danger); font-size: 0.9rem; margin-top: 12px;"></div>
-  </div>
+    <div class="stats-grid" id="statsContainer" aria-live="polite"></div>
+  </section>
 
-  <div class="glass-card" id="voterCard">
+  <section class="glass-card login-card hidden" id="loginCard" aria-labelledby="loginHeading">
+    <h2 id="loginHeading"><i class="fas fa-lock" aria-hidden="true" style="margin-right: 8px;"></i>Editor Login</h2>
+    <p>Enter the shared editor credentials to unlock status updates for this booth.</p>
+
+    <div class="form-grid">
+      <div>
+        <label class="field-label" for="loginEmail">Editor email</label>
+        <div class="input-shell">
+          <i class="fas fa-envelope" aria-hidden="true"></i>
+          <input type="email" id="loginEmail" placeholder="Email" autocomplete="email" value="editor@election.local">
+        </div>
+      </div>
+
+      <div>
+        <label class="field-label" for="loginPassword">Password</label>
+        <div class="input-shell">
+          <i class="fas fa-key" aria-hidden="true"></i>
+          <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="loginBtn" type="button">Log In</button>
+      <div id="loginError" class="inline-error" role="alert" aria-live="assertive"></div>
+    </div>
+  </section>
+
+  <section class="glass-card" id="voterCard" aria-labelledby="tableHeading">
     <div class="controls-bar">
-      <div class="search-wrapper">
-        <i class="fas fa-search"></i>
-        <input type="text" id="searchInput" placeholder="Search voter # or status..." autocomplete="off">
+      <div class="controls-head">
+        <div>
+          <h2 class="section-title" id="tableHeading">Voter control grid</h2>
+          <p class="section-subtitle">Search, filter, and update voter states with guarded bulk actions and rollback-aware optimistic UI.</p>
+        </div>
       </div>
-      <div class="filter-group">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="our">Our</button>
-        <button class="filter-btn" data-filter="polled">Polled</button>
-        <button class="filter-btn" data-filter="ourpolled">Our Polled</button>
-        <button class="filter-btn" data-filter="none">Unmarked</button>
+
+      <div class="search-row">
+        <div class="search-wrapper">
+          <label class="sr-only" for="searchInput">Search voters by serial number or status</label>
+          <i class="fas fa-search" aria-hidden="true"></i>
+          <input type="text" id="searchInput" placeholder="Search by voter number or status" autocomplete="off" inputmode="search" spellcheck="false">
+        </div>
+
+        <div class="filter-group" role="group" aria-label="Filter voters by status">
+          <button class="filter-btn active" type="button" data-filter="all" aria-pressed="true">All</button>
+          <button class="filter-btn" type="button" data-filter="our" aria-pressed="false">Our</button>
+          <button class="filter-btn" type="button" data-filter="polled" aria-pressed="false">Polled</button>
+          <button class="filter-btn" type="button" data-filter="ourpolled" aria-pressed="false">Our Polled</button>
+          <button class="filter-btn" type="button" data-filter="none" aria-pressed="false">Unmarked</button>
+        </div>
       </div>
     </div>
 
-    <div class="voter-actions" style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-      <button class="btn btn-primary" id="markOurBtn"><i class="fas fa-user-check"></i> Mark Our</button>
-      <button class="btn" id="markPolledBtn"><i class="fas fa-vote-yea"></i> Mark Polled</button>
-      <button class="btn btn-outline" id="removeStatusBtn"><i class="fas fa-times"></i> Clear Status</button>
-      <button class="btn btn-outline" id="deselectAllBtn"><i class="fas fa-ban"></i> Deselect All</button>
-      <span style="margin-left: auto; color: var(--muted);" id="selectedInfo">No voter selected</span>
+    <div class="voter-actions">
+      <button class="btn btn-primary" id="markOurBtn" type="button"><i class="fas fa-user-check" aria-hidden="true"></i> Mark Our</button>
+      <button class="btn" id="markPolledBtn" type="button"><i class="fas fa-vote-yea" aria-hidden="true"></i> Mark Polled</button>
+      <button class="btn btn-outline" id="removeStatusBtn" type="button"><i class="fas fa-times" aria-hidden="true"></i> Clear Status</button>
+      <button class="btn btn-outline" id="deselectAllBtn" type="button"><i class="fas fa-ban" aria-hidden="true"></i> Deselect All</button>
+      <div class="selection-summary">
+        <div id="selectedInfo" aria-live="polite"><strong>No voter selected</strong></div>
+        <div id="selectionHint">Tip: Press / to search, Esc to clear selection.</div>
+      </div>
+    </div>
+
+    <div class="table-meta">
+      <span id="resultCount">0 visible</span>
+      <span id="tableFootnote">Single click selects. Double click or Enter toggles Our.</span>
     </div>
 
     <div class="voter-table-container" id="tableWrapper">
-      <table>
+      <table aria-describedby="tableAssistiveText">
+        <caption id="tableAssistiveText" class="sr-only">
+          Booth voter list with bulk selection, status indicators, and last updated timestamps.
+        </caption>
         <thead>
           <tr>
-            <th style="width: 40px;"><input type="checkbox" class="select-all-checkbox" id="selectAllCheckbox" title="Select All"></th>
+            <th style="width: 44px;">
+              <label class="sr-only" for="selectAllCheckbox">Select all visible voters</label>
+              <input type="checkbox" class="select-all-checkbox" id="selectAllCheckbox" title="Select all visible voters">
+            </th>
             <th>Sl. No</th>
             <th>Status</th>
             <th>Last Updated</th>
           </tr>
         </thead>
         <tbody id="voterTableBody">
-          <tr><td colspan="4" class="empty-message">Loading...</td></tr>
+          <tr><td colspan="4" class="empty-message">Loading dashboard...</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="footer-note">
-      <span><i class="fas fa-cloud-upload-alt"></i> Real‑time sync enabled</span>
-      <span>Click row to select • Double-click to toggle 'Our'</span>
+      <span><i class="fas fa-cloud-upload-alt" aria-hidden="true"></i><span id="syncFootnote">Polling pauses while the tab is hidden and resumes automatically.</span></span>
+      <span><i class="fas fa-keyboard" aria-hidden="true"></i>Keyboard friendly: Space selects, Enter toggles, Esc clears.</span>
     </div>
-  </div>
-</div>
+  </section>
+
+  <noscript>
+    <section class="glass-card">
+      JavaScript is required to load snapshot data, authenticate editors, and update voter statuses.
+    </section>
+  </noscript>
+</main>
+
+<div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
 <script>
-  (function() {
-    "use strict";
+  (function bootstrapElectionSuite() {
+    const FIREBASE_READY_EVENT = "firebase-ready";
 
-    // ---------- DEPENDENCY CHECK (NO arguments.callee) ----------
-    function initWhenReady() {
-      if (!window.auth) {
-        setTimeout(initWhenReady, 50);
-        return;
-      }
-      startApp();
+    if (window.firebaseServices) {
+      initializeApp();
+      return;
     }
 
-    function startApp() {
-      console.log('🚀 Enterprise Election Suite Initialized');
-      const auth = window.auth;
-      const onAuthStateChanged = window.firebaseOnAuthStateChanged;
-      const signIn = window.firebaseSignIn;
-      const signOutUser = window.firebaseSignOut;
-
-      // ---------- DOM ELEMENTS ----------
-      const $ = id => document.getElementById(id);
-      const displayAssembly = $('displayAssembly'), displayBooth = $('displayBooth'), displayTotal = $('displayTotal');
-      const statsContainer = $('statsContainer'), tbody = $('voterTableBody'), searchInput = $('searchInput');
-      const filterBtns = document.querySelectorAll('.filter-btn'), selectedInfo = $('selectedInfo');
-      const readonlyIndicator = $('readonlyIndicator'), loginCard = $('loginCard'), voterCard = $('voterCard');
-      const loginEmail = $('loginEmail'), loginPassword = $('loginPassword'), loginBtn = $('loginBtn'), loginError = $('loginError');
-      const logoutBtn = $('logoutBtn'), backBtn = $('backToBoothBtn'), shareViewLinkBtn = $('shareViewLinkBtn');
-      const resetAllBtn = $('resetAllBtn'), markOurBtn = $('markOurBtn'), markPolledBtn = $('markPolledBtn');
-      const removeStatusBtn = $('removeStatusBtn'), deselectAllBtn = $('deselectAllBtn'), selectAllCheckbox = $('selectAllCheckbox');
-
-      // ---------- CONSTANTS ----------
-      const CDN_BASE = 'https://raw.githubusercontent.com/hijaz-07/election-snapshots/main';
-      const UPDATE_WORKER_URL = 'https://voter-update-handler.dlyzscreen.workers.dev/update';
-      const FIREBASE_DB_URL = 'https://asmath-election-web-app-default-rtdb.firebaseio.com';
-
-      // ---------- STATE ----------
-      let voters = [];
-      let totalVoters = 0;
-      let currentUser = null;
-      let isReadOnly = false;
-      let selectedIndices = new Set();
-      let singleSelectedIndex = -1;
-      let currentFilter = 'all';
-      let searchTerm = '';
-      let pollInterval = null;
-      let lastSnapshotTimestamp = 0;
-      let boothId = null;
-      let pendingRollbackMap = new Map();
-
-      // ---------- URL PARSING & VALIDATION ----------
-      const urlParams = new URLSearchParams(window.location.search);
-      boothId = urlParams.get('booth');
-      if (!boothId) { alert('No booth specified.'); window.location.href = 'index.html'; return; }
-      boothId = decodeURIComponent(boothId);
-      const mode = urlParams.get('mode') || 'edit';
-      isReadOnly = (mode === 'view');
-      const totalParam = urlParams.get('total');
-      totalVoters = Number.isInteger(parseInt(totalParam)) && parseInt(totalParam) > 0 ? parseInt(totalParam) : 0;
-      if (totalVoters === 0) { alert('Invalid voter count.'); window.location.href = 'index.html'; return; }
-      const assemblyParam = urlParams.get('assembly') || 'Unknown';
-      const boothNoParam = urlParams.get('boothNo') || '0';
-
-      displayAssembly.textContent = assemblyParam;
-      displayBooth.textContent = boothNoParam;
-      displayTotal.textContent = totalVoters;
-
-      // ---------- UTILITY: TOAST ----------
-      function showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+    window.addEventListener(FIREBASE_READY_EVENT, initializeApp, { once: true });
+    window.setTimeout(() => {
+      const tbody = document.getElementById("voterTableBody");
+      if (tbody && !window.firebaseServices) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Waiting for authentication services...</td></tr>';
       }
+    }, 1200);
 
-      // ---------- SAFE HTML ESCAPE ----------
-      const escapeHtml = (text) => {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    function initializeApp() {
+      if (initializeApp.started) {
+        return;
+      }
+      initializeApp.started = true;
+
+      console.info("Enterprise Election Suite initialized");
+
+      const { auth, signInWithEmailAndPassword: signIn, signOut: signOutUser, onAuthStateChanged } = window.firebaseServices;
+
+      const $ = (id) => document.getElementById(id);
+      const displayAssembly = $("displayAssembly");
+      const displayBooth = $("displayBooth");
+      const displayTotal = $("displayTotal");
+      const statsContainer = $("statsContainer");
+      const tbody = $("voterTableBody");
+      const searchInput = $("searchInput");
+      const selectedInfo = $("selectedInfo");
+      const selectionHint = $("selectionHint");
+      const resultCount = $("resultCount");
+      const tableFootnote = $("tableFootnote");
+      const readonlyIndicator = $("readonlyIndicator");
+      const loginCard = $("loginCard");
+      const voterCard = $("voterCard");
+      const loginEmail = $("loginEmail");
+      const loginPassword = $("loginPassword");
+      const loginBtn = $("loginBtn");
+      const loginError = $("loginError");
+      const logoutBtn = $("logoutBtn");
+      const backBtn = $("backToBoothBtn");
+      const refreshBtn = $("refreshBtn");
+      const shareViewLinkBtn = $("shareViewLinkBtn");
+      const resetAllBtn = $("resetAllBtn");
+      const markOurBtn = $("markOurBtn");
+      const markPolledBtn = $("markPolledBtn");
+      const removeStatusBtn = $("removeStatusBtn");
+      const deselectAllBtn = $("deselectAllBtn");
+      const selectAllCheckbox = $("selectAllCheckbox");
+      const connectionIndicator = $("connectionIndicator");
+      const connectionLabel = $("connectionLabel");
+      const lastSyncLabel = $("lastSyncLabel");
+      const syncFootnote = $("syncFootnote");
+      const toastRegion = $("toastRegion");
+      const filterBtns = Array.from(document.querySelectorAll(".filter-btn"));
+
+      const CDN_BASE = "https://raw.githubusercontent.com/hijaz-07/election-snapshots/main";
+      const UPDATE_WORKER_URL = "https://voter-update-handler.dlyzscreen.workers.dev/update";
+      const FIREBASE_DB_URL = "https://asmath-election-web-app-default-rtdb.firebaseio.com";
+      const VALID_STATUSES = new Set(["", "our", "polled", "ourpolled"]);
+      const SNAPSHOT_POLL_MS = { view: 10000, edit: 5000 };
+      const UPDATE_CONCURRENCY = 16;
+
+      const appState = {
+        voters: [],
+        totalVoters: 0,
+        currentUser: null,
+        isReadOnly: false,
+        selectedIndices: new Set(),
+        singleSelectedIndex: -1,
+        currentFilter: "all",
+        searchTerm: "",
+        boothId: "",
+        lastGeneratedAtMs: 0,
+        lastGeneratedAtLabel: "",
+        pollingTimer: 0,
+        refreshConfirmationTimer: 0,
+        isFetchingSnapshot: false,
+        isSubmittingUpdates: false,
+        hasLoadedSnapshot: false
       };
 
-      // ---------- STOP POLLING ----------
-      function stopPolling() {
-        if (pollInterval) {
-          clearInterval(pollInterval);
-          pollInterval = null;
+      const urlParams = new URLSearchParams(window.location.search);
+      const boothId = (urlParams.get("booth") || "").trim();
+
+      if (!boothId) {
+        alert("No booth specified.");
+        window.location.assign(new URL("index.html", window.location.href).toString());
+        return;
+      }
+
+      const mode = (urlParams.get("mode") || "edit").trim().toLowerCase();
+      const boothData = {
+        assemblyName: (urlParams.get("assembly") || "Unknown").trim() || "Unknown",
+        boothNo: (urlParams.get("boothNo") || "-").trim() || "-",
+        votersCount: parsePositiveInt(urlParams.get("total"), 0)
+      };
+
+      appState.boothId = boothId;
+      appState.isReadOnly = mode === "view";
+      appState.totalVoters = boothData.votersCount;
+
+      displayAssembly.textContent = boothData.assemblyName;
+      displayBooth.textContent = boothData.boothNo;
+      displayTotal.textContent = String(appState.totalVoters);
+      renderStats();
+      renderTable();
+      applyInteractionState();
+
+      onAuthStateChanged(auth, async (user) => {
+        appState.currentUser = user;
+        const needsAuth = !appState.isReadOnly && !user;
+
+        loginCard.classList.toggle("hidden", !needsAuth);
+        voterCard.classList.toggle("hidden", needsAuth);
+        logoutBtn.style.display = user && !appState.isReadOnly ? "inline-flex" : "none";
+        readonlyIndicator.classList.toggle("hidden", !appState.isReadOnly);
+        loginError.textContent = "";
+
+        stopPolling();
+
+        if (!needsAuth) {
+          try {
+            if (!appState.isReadOnly && user) {
+              await ensureBoothExists(boothData);
+            }
+            startPolling();
+          } catch (error) {
+            console.error("Initialization error:", error);
+            setConnectionState("error", "Setup failed");
+            showToast(error.message || "Unable to prepare booth data.", "error");
+          }
+        } else {
+          setConnectionState("idle", "Editor login required");
+        }
+
+        applyInteractionState();
+      });
+
+      setupEventListeners();
+
+      function parsePositiveInt(value, fallback) {
+        const parsed = Number.parseInt(value, 10);
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+      }
+
+      function normalizeStatus(status) {
+        const normalized = typeof status === "string" ? status.trim().toLowerCase() : "";
+        return VALID_STATUSES.has(normalized) ? normalized : "";
+      }
+
+      function normalizeTimestamp(value) {
+        if (!value) {
+          return null;
+        }
+
+        const stamp = new Date(value);
+        return Number.isNaN(stamp.getTime()) ? null : stamp.toISOString();
+      }
+
+      function normalizeVoter(record) {
+        return {
+          status: normalizeStatus(record && record.status),
+          updatedAt: normalizeTimestamp(record && record.updatedAt)
+        };
+      }
+
+      function materializeVoters(rawVoters, expectedCount) {
+        let source = [];
+
+        if (Array.isArray(rawVoters)) {
+          source = rawVoters;
+        } else if (rawVoters && typeof rawVoters === "object") {
+          const numericIndices = Object.keys(rawVoters)
+            .map((key) => Number.parseInt(key, 10))
+            .filter((value) => Number.isFinite(value) && value >= 0);
+          const maxIndex = numericIndices.length ? Math.max.apply(null, numericIndices) : -1;
+          const length = Math.max(expectedCount, maxIndex + 1);
+          source = Array.from({ length }, (_, index) => rawVoters[index] || rawVoters[String(index)] || {});
+        }
+
+        const finalLength = Math.max(expectedCount, source.length);
+        return Array.from({ length: finalLength }, (_, index) => normalizeVoter(source[index] || {}));
+      }
+
+      function buildFirebaseUrl() {
+        const pathSegments = Array.from(arguments).map((segment) => encodeURIComponent(String(segment)));
+        return `${FIREBASE_DB_URL}/${pathSegments.join("/")}.json`;
+      }
+
+      function createSnapshotUrl() {
+        const lowerBoothId = appState.boothId.toLowerCase();
+        const url = new URL(`${CDN_BASE}/${encodeURIComponent(lowerBoothId)}.json`);
+        url.searchParams.set("ts", String(Date.now()));
+        return url.toString();
+      }
+
+      function setConnectionState(state, label) {
+        connectionIndicator.dataset.state = state;
+        connectionLabel.textContent = label;
+
+        if (state === "live") {
+          syncFootnote.textContent = "Snapshot sync is active and polling automatically adapts to page visibility.";
+        } else if (state === "syncing") {
+          syncFootnote.textContent = "Refreshing snapshot data now.";
+        } else if (state === "offline") {
+          syncFootnote.textContent = "Offline mode detected. The most recent snapshot is still visible.";
+        } else if (state === "error") {
+          syncFootnote.textContent = "Snapshot sync hit an error. Existing data is preserved until the next successful refresh.";
+        } else {
+          syncFootnote.textContent = "Polling pauses while the tab is hidden and resumes automatically.";
         }
       }
 
-      // ---------- ENSURE BOOTH EXISTS ----------
-      async function ensureBoothExists() {
-        const checkRes = await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`);
-        if ((await checkRes.json())) return;
-        await fetch(`${FIREBASE_DB_URL}/booths/${boothId}.json`, {
-          method: 'PUT',
-          body: JSON.stringify({ assemblyName: assemblyParam, boothNo: boothNoParam, votersCount: totalVoters })
-        });
-        const votersPayload = {};
-        for (let i = 0; i < totalVoters; i++) votersPayload[i] = { status: '', updatedAt: null };
-        await fetch(`${FIREBASE_DB_URL}/booths/${boothId}/voters.json`, { method: 'PUT', body: JSON.stringify(votersPayload) });
+      function formatSyncLabel(updatedAt) {
+        const stamp = new Date(updatedAt);
+        if (Number.isNaN(stamp.getTime())) {
+          return "Snapshot loaded";
+        }
+
+        return `Last sync ${stamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
       }
 
-      // ---------- UPDATE SINGLE VOTER ----------
-      async function updateVoterStatus(index, newStatus) {
-        if (isReadOnly || !currentUser) return false;
+      function showToast(message, type) {
+        const toast = document.createElement("div");
+        toast.className = `toast ${type || "info"}`;
+        toast.textContent = message;
+        toastRegion.appendChild(toast);
+
+        window.setTimeout(() => {
+          toast.remove();
+        }, 3600);
+      }
+
+      function safeJsonParse(text) {
+        if (!text) {
+          return null;
+        }
+
         try {
-          const res = await fetch(UPDATE_WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ boothId, voterIndex: index, newStatus })
-          });
-          if (!res.ok) throw new Error((await res.json()).error || 'Update failed');
-          return true;
+          return JSON.parse(text);
         } catch (error) {
-          console.error('Update error:', error);
+          return null;
+        }
+      }
+
+      async function fetchJson(url, options) {
+        const settings = options || {};
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), settings.timeoutMs || 12000);
+
+        try {
+          const response = await fetch(url, {
+            method: settings.method || "GET",
+            headers: settings.headers || {},
+            body: settings.body,
+            signal: controller.signal,
+            cache: settings.cache || "no-store"
+          });
+
+          const text = await response.text();
+          const data = safeJsonParse(text);
+
+          if (!response.ok) {
+            const message = data && data.error ? data.error : `Request failed with status ${response.status}`;
+            throw new Error(message);
+          }
+
+          return data;
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
+      }
+
+      async function ensureBoothExists(seedBoothData) {
+        const boothRecordUrl = buildFirebaseUrl("booths", appState.boothId);
+        const boothRecord = await fetchJson(boothRecordUrl, { timeoutMs: 12000 });
+
+        if (boothRecord) {
+          return;
+        }
+
+        await fetchJson(boothRecordUrl, {
+          method: "PUT",
+          timeoutMs: 15000,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assemblyName: seedBoothData.assemblyName,
+            boothNo: seedBoothData.boothNo,
+            votersCount: appState.totalVoters
+          })
+        });
+
+        const votersPayload = {};
+        for (let index = 0; index < appState.totalVoters; index += 1) {
+          votersPayload[index] = { status: "", updatedAt: null };
+        }
+
+        await fetchJson(buildFirebaseUrl("booths", appState.boothId, "voters"), {
+          method: "PUT",
+          timeoutMs: 20000,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(votersPayload)
+        });
+
+        console.info("Booth created");
+      }
+
+      async function fetchSnapshot(options) {
+        if (appState.isFetchingSnapshot) {
           return false;
         }
-      }
 
-      // ---------- OPTIMISTIC UI ----------
-      function applyOptimisticUpdate(indices, newStatusResolver) {
-        for (const idx of indices) {
-          if (voters[idx]) {
-            const oldStatus = voters[idx].status || '';
-            pendingRollbackMap.set(idx, oldStatus);
-            voters[idx].status = newStatusResolver(oldStatus);
-            voters[idx].updatedAt = new Date().toISOString();
-          }
-        }
-        renderTable();
-      }
+        const settings = options || {};
+        appState.isFetchingSnapshot = true;
+        refreshBtn.disabled = true;
+        setConnectionState(navigator.onLine ? "syncing" : "offline", navigator.onLine ? "Syncing snapshot" : "Offline - using cached view");
 
-      function rollbackOptimisticUpdate(indices) {
-        for (const idx of indices) {
-          if (voters[idx] && pendingRollbackMap.has(idx)) {
-            voters[idx].status = pendingRollbackMap.get(idx);
-          }
-        }
-        pendingRollbackMap.clear();
-        renderTable();
-        showToast('Update failed, changes reverted.', 'error');
-      }
-
-      // ---------- BULK UPDATE (CORRECTED) ----------
-      async function bulkUpdateStatus(indices, newStatusResolver) {
-        if (isReadOnly || !currentUser || indices.length === 0) return;
-
-        const intendedStatuses = new Map();
-        for (const idx of indices) {
-          if (voters[idx]) {
-            const oldStatus = voters[idx].status || '';
-            intendedStatuses.set(idx, newStatusResolver(oldStatus));
-          }
-        }
-
-        applyOptimisticUpdate(indices, newStatusResolver);
-
-        const results = await Promise.all(
-          Array.from(intendedStatuses.entries()).map(([idx, newStatus]) => updateVoterStatus(idx, newStatus))
-        );
-
-        if (results.some(success => !success)) {
-          rollbackOptimisticUpdate(indices);
-        } else {
-          pendingRollbackMap.clear();
-          setTimeout(() => fetchSnapshot(boothId), 2000);
-        }
-      }
-
-      // ---------- SNAPSHOT FETCH ----------
-      async function fetchSnapshot(id) {
         try {
-          const res = await fetch(`${CDN_BASE}/${id.toLowerCase()}.json`);
-          if (!res.ok) throw new Error('Snapshot not found');
-          const data = await res.json();
-          const snapshotTime = Number(data.generatedAt) || 0;
-          if (snapshotTime > lastSnapshotTimestamp) {
-            lastSnapshotTimestamp = snapshotTime;
-            displayAssembly.textContent = data.assemblyName || assemblyParam;
-            displayBooth.textContent = data.boothNo || boothNoParam;
-            totalVoters = data.votersCount || totalVoters;
-            displayTotal.textContent = totalVoters;
-            voters = (data.voters || []).map((v, idx) => ({ ...v, index: idx }));
+          const data = await fetchJson(createSnapshotUrl(), {
+            timeoutMs: 15000,
+            headers: {
+              "Cache-Control": "no-cache"
+            }
+          });
+
+          if (!data || typeof data !== "object") {
+            throw new Error("Snapshot payload was empty.");
+          }
+
+          const nextTotal = parsePositiveInt(data.votersCount, appState.totalVoters);
+          const nextVoters = materializeVoters(data.voters, nextTotal);
+          const generatedAtMs = data.generatedAt ? Date.parse(data.generatedAt) : 0;
+          const shouldReplaceData = !appState.hasLoadedSnapshot || !appState.lastGeneratedAtMs || (generatedAtMs && generatedAtMs >= appState.lastGeneratedAtMs);
+
+          if (shouldReplaceData) {
+            appState.lastGeneratedAtMs = generatedAtMs || Date.now();
+            appState.lastGeneratedAtLabel = typeof data.generatedAt === "string" ? data.generatedAt : new Date().toISOString();
+            appState.totalVoters = nextTotal || nextVoters.length;
+            appState.voters = nextVoters;
+
+            displayAssembly.textContent = (data.assemblyName || displayAssembly.textContent || "Unknown").trim() || "Unknown";
+            displayBooth.textContent = String(data.boothNo || displayBooth.textContent || "-");
+            displayTotal.textContent = String(appState.totalVoters);
+
+            pruneSelection();
             renderTable();
           }
+
+          appState.hasLoadedSnapshot = true;
+          lastSyncLabel.textContent = formatSyncLabel(appState.lastGeneratedAtLabel);
+          setConnectionState("live", "Live sync active");
+
+          if (settings.announceSuccess) {
+            showToast("Snapshot refreshed.", "success");
+          }
+
+          return true;
         } catch (error) {
-          console.error('Snapshot fetch failed:', error);
+          console.error("Snapshot fetch failed:", error);
+          setConnectionState(navigator.onLine ? "error" : "offline", navigator.onLine ? "Snapshot unavailable" : "Offline - showing last snapshot");
+
+          if (!appState.hasLoadedSnapshot) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Unable to load snapshot data yet. Check connectivity or booth availability.</td></tr>';
+          }
+
+          if (!settings.silent) {
+            showToast(error.message || "Unable to refresh snapshot.", "error");
+          }
+
+          return false;
+        } finally {
+          appState.isFetchingSnapshot = false;
+          refreshBtn.disabled = false;
+          applyInteractionState();
         }
       }
 
-      function startPolling(id) {
-        stopPolling();
-        fetchSnapshot(id);
-        pollInterval = setInterval(() => fetchSnapshot(id), isReadOnly ? 10000 : 5000);
+      function stopPolling() {
+        if (appState.pollingTimer) {
+          window.clearTimeout(appState.pollingTimer);
+          appState.pollingTimer = 0;
+        }
       }
 
-      // ---------- RENDERING ----------
-      function computeStats() {
-        let our = 0, polled = 0, ourPolled = 0;
-        voters.forEach(v => {
-          if (v.status === 'our') our++;
-          else if (v.status === 'polled') polled++;
-          else if (v.status === 'ourpolled') ourPolled++;
+      function canPollSnapshot() {
+        return appState.isReadOnly || Boolean(appState.currentUser);
+      }
+
+      function schedulePolling(delayMs) {
+        stopPolling();
+
+        if (document.hidden || !canPollSnapshot()) {
+          return;
+        }
+
+        appState.pollingTimer = window.setTimeout(async () => {
+          await fetchSnapshot({ silent: true });
+          schedulePolling(appState.isReadOnly ? SNAPSHOT_POLL_MS.view : SNAPSHOT_POLL_MS.edit);
+        }, delayMs);
+      }
+
+      function startPolling() {
+        if (!canPollSnapshot()) {
+          return;
+        }
+
+        stopPolling();
+        fetchSnapshot({ silent: !appState.isReadOnly }).finally(() => {
+          schedulePolling(appState.isReadOnly ? SNAPSHOT_POLL_MS.view : SNAPSHOT_POLL_MS.edit);
         });
+      }
+
+      function pruneSelection() {
+        const maxIndex = appState.voters.length - 1;
+        appState.selectedIndices = new Set(Array.from(appState.selectedIndices).filter((index) => index >= 0 && index <= maxIndex));
+
+        if (appState.singleSelectedIndex < 0 || appState.singleSelectedIndex > maxIndex) {
+          appState.singleSelectedIndex = -1;
+        }
+      }
+
+      function clearSelection() {
+        appState.selectedIndices.clear();
+        appState.singleSelectedIndex = -1;
+      }
+
+      function getStatusLabel(status) {
+        if (status === "our") {
+          return "OUR";
+        }
+        if (status === "polled") {
+          return "POLLED";
+        }
+        if (status === "ourpolled") {
+          return "OUR POLLED";
+        }
+        return "UNMARKED";
+      }
+
+      function formatUpdatedAt(value) {
+        if (!value) {
+          return "-";
+        }
+
+        const stamp = new Date(value);
+        if (Number.isNaN(stamp.getTime())) {
+          return "-";
+        }
+
+        const now = new Date();
+        const sameDay = stamp.toDateString() === now.toDateString();
+        return sameDay
+          ? stamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : stamp.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      }
+
+      function computeStats() {
+        let ourOnly = 0;
+        let polledOnly = 0;
+        let ourPolled = 0;
+
+        appState.voters.forEach((voter) => {
+          const status = normalizeStatus(voter.status);
+          if (status === "our") {
+            ourOnly += 1;
+          } else if (status === "polled") {
+            polledOnly += 1;
+          } else if (status === "ourpolled") {
+            ourPolled += 1;
+          }
+        });
+
         return {
-          our: our + ourPolled, polled: polled + ourPolled, ourPolled,
-          ourBalance: our, totalBalance: totalVoters - (polled + ourPolled), totalVoters
+          ourVotes: ourOnly + ourPolled,
+          totalPolled: polledOnly + ourPolled,
+          ourPolled,
+          ourBalance: ourOnly,
+          totalBalance: Math.max(appState.totalVoters - (polledOnly + ourPolled), 0),
+          totalVoters: appState.totalVoters
         };
       }
 
       function renderStats() {
-        const s = computeStats();
-        const p = v => totalVoters ? ((v/totalVoters)*100).toFixed(1)+'%' : '0.0%';
+        const stats = computeStats();
+        const percentage = (value) => {
+          if (!stats.totalVoters) {
+            return "0.0%";
+          }
+          return `${((value / stats.totalVoters) * 100).toFixed(1)}%`;
+        };
+
         statsContainer.innerHTML = `
-          <div class="stat-card"><div class="stat-value stat-our">${s.our}<span class="stat-percent">${p(s.our)}</span></div><div class="stat-label">Our Votes</div></div>
-          <div class="stat-card"><div class="stat-value stat-polled">${s.polled}<span class="stat-percent">${p(s.polled)}</span></div><div class="stat-label">Total Polled</div></div>
-          <div class="stat-card"><div class="stat-value stat-ourpolled">${s.ourPolled}<span class="stat-percent">${p(s.ourPolled)}</span></div><div class="stat-label">Our Polled</div></div>
-          <div class="stat-card"><div class="stat-value stat-balance">${s.ourBalance}<span class="stat-percent">${p(s.ourBalance)}</span></div><div class="stat-label">Our Balance</div></div>
-          <div class="stat-card"><div class="stat-value">${s.totalBalance}<span class="stat-percent">${p(s.totalBalance)}</span></div><div class="stat-label">Total Balance</div></div>
+          <div class="stat-card">
+            <div class="stat-value stat-our">${stats.ourVotes}<span class="stat-percent">${percentage(stats.ourVotes)}</span></div>
+            <div class="stat-label">Our Votes</div>
+            <div class="stat-note">Combined total of pure Our plus Our Polled.</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value stat-polled">${stats.totalPolled}<span class="stat-percent">${percentage(stats.totalPolled)}</span></div>
+            <div class="stat-label">Total Polled</div>
+            <div class="stat-note">Every voter marked as Polled or Our Polled.</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value stat-ourpolled">${stats.ourPolled}<span class="stat-percent">${percentage(stats.ourPolled)}</span></div>
+            <div class="stat-label">Our Polled</div>
+            <div class="stat-note">Supporters already converted into counted turnout.</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value stat-balance">${stats.ourBalance}<span class="stat-percent">${percentage(stats.ourBalance)}</span></div>
+            <div class="stat-label">Our Balance</div>
+            <div class="stat-note">Supporters still not moved into the Polled bucket.</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${stats.totalBalance}<span class="stat-percent">${percentage(stats.totalBalance)}</span></div>
+            <div class="stat-label">Total Balance</div>
+            <div class="stat-note">Remaining voters not yet marked as polled in any form.</div>
+          </div>
         `;
       }
 
       function getFilteredVoters() {
-        let filtered = voters.map((v, i) => ({ ...v, originalIndex: i }));
-        if (currentFilter !== 'all') filtered = filtered.filter(v => currentFilter === 'none' ? !v.status : v.status === currentFilter);
-        if (searchTerm) {
-          const t = searchTerm.toLowerCase();
-          filtered = filtered.filter(v => (v.originalIndex+1).toString().includes(t) || (v.status||'unmarked').toLowerCase().includes(t));
+        let filtered = appState.voters.map((voter, index) => ({
+          originalIndex: index,
+          status: normalizeStatus(voter.status),
+          updatedAt: voter.updatedAt
+        }));
+
+        if (appState.currentFilter !== "all") {
+          filtered = filtered.filter((voter) => appState.currentFilter === "none" ? !voter.status : voter.status === appState.currentFilter);
         }
+
+        if (appState.searchTerm) {
+          const term = appState.searchTerm.toLowerCase();
+          filtered = filtered.filter((voter) => {
+            const serial = String(voter.originalIndex + 1);
+            const label = getStatusLabel(voter.status).toLowerCase();
+            return serial.includes(term) || label.includes(term);
+          });
+        }
+
         return filtered;
       }
 
-      function renderTable() {
-        if (!voters.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">Waiting for data...</td></tr>`; renderStats(); return; }
-        const filtered = getFilteredVoters();
-        if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="4" class="empty-message">No voters match</td></tr>`; renderStats(); return; }
-
-        const allFilteredIndices = filtered.map(item => item.originalIndex);
-        const isAllSelected = allFilteredIndices.length > 0 && allFilteredIndices.every(idx => selectedIndices.has(idx));
-        selectAllCheckbox.checked = isAllSelected;
-        selectAllCheckbox.indeterminate = !isAllSelected && allFilteredIndices.some(idx => selectedIndices.has(idx));
-
-        const rowsHtml = filtered.map(item => {
-          const idx = item.originalIndex, s = item.status;
-          const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
-          const isChecked = selectedIndices.has(idx);
-          const isSingle = (singleSelectedIndex === idx && selectedIndices.size === 0);
-          const rowClass = `voter-row ${isChecked ? 'checked-row' : (isSingle ? 'selected-row' : '')}`;
-          let slClass = 'sl-col';
-          if (s === 'our') slClass += ' sl-our';
-          else if (s === 'polled') slClass += ' sl-polled';
-          else if (s === 'ourpolled') slClass += ' sl-ourpolled';
-          const statusDisplay = s ? s.toUpperCase() : '—';
-          return `<tr class="${rowClass}" data-index="${idx}">
-            <td><input type="checkbox" class="voter-checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''} ${isReadOnly ? 'disabled' : ''}></td>
-            <td class="${slClass}">${idx+1}</td>
-            <td><span class="status-badge status-${s || 'none'}">${escapeHtml(statusDisplay)}</span></td>
-            <td>${escapeHtml(updated)}</td>
-          </tr>`;
-        }).join('');
-        tbody.innerHTML = rowsHtml;
-
-        selectedInfo.textContent = selectedIndices.size ? `${selectedIndices.size} voter(s) selected` :
-                                   (singleSelectedIndex !== -1 ? `Selected: Voter #${singleSelectedIndex+1}` : 'No voter selected');
-        renderStats();
+      function renderFilterButtons() {
+        filterBtns.forEach((button) => {
+          const isActive = button.dataset.filter === appState.currentFilter;
+          button.classList.toggle("active", isActive);
+          button.setAttribute("aria-pressed", String(isActive));
+        });
       }
 
-      function applyReadOnlyMode() {
-        const canEdit = !isReadOnly && currentUser;
-        readonlyIndicator.style.display = isReadOnly ? 'inline-flex' : 'none';
-        [markOurBtn, markPolledBtn, removeStatusBtn, resetAllBtn].forEach(b => b.disabled = !canEdit);
-        deselectAllBtn.disabled = selectAllCheckbox.disabled = !canEdit;
-        backBtn.textContent = isReadOnly ? 'Back to Setup' : 'Change Booth';
+      function renderTable() {
+        renderStats();
+        renderFilterButtons();
+
+        if (!appState.voters.length) {
+          resultCount.textContent = "0 visible";
+          tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Waiting for snapshot data...</td></tr>';
+          selectedInfo.innerHTML = "<strong>No voter selected</strong>";
+          selectionHint.textContent = appState.isReadOnly ? "View mode is active." : "Tip: Press / to search, Esc to clear selection.";
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.indeterminate = false;
+          applyInteractionState();
+          return;
+        }
+
+        const filtered = getFilteredVoters();
+        const filteredIndices = filtered.map((item) => item.originalIndex);
+        const allSelected = filteredIndices.length > 0 && filteredIndices.every((index) => appState.selectedIndices.has(index));
+        const someSelected = filteredIndices.some((index) => appState.selectedIndices.has(index));
+
+        selectAllCheckbox.checked = allSelected;
+        selectAllCheckbox.indeterminate = !allSelected && someSelected;
+        resultCount.textContent = `${filtered.length} visible of ${appState.voters.length}`;
+
+        if (!filtered.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty-message">No voters match the current filter or search.</td></tr>';
+        } else {
+          tbody.innerHTML = filtered.map((item) => {
+            const status = normalizeStatus(item.status);
+            const isChecked = appState.selectedIndices.has(item.originalIndex);
+            const isSingle = appState.singleSelectedIndex === item.originalIndex && appState.selectedIndices.size === 0;
+            const rowClass = `voter-row ${isChecked ? "checked-row" : (isSingle ? "selected-row" : "")}`;
+            const rowStatusClass = status ? `status-${status}` : "status-none";
+            const statusLabel = getStatusLabel(status);
+            let slClass = "sl-col";
+
+            if (status === "our") {
+              slClass += " sl-our";
+            } else if (status === "polled") {
+              slClass += " sl-polled";
+            } else if (status === "ourpolled") {
+              slClass += " sl-ourpolled";
+            }
+
+            return `
+              <tr class="${rowClass}" data-index="${item.originalIndex}" tabindex="0" aria-selected="${isChecked || isSingle ? "true" : "false"}">
+                <td>
+                  <input
+                    type="checkbox"
+                    class="voter-checkbox"
+                    data-index="${item.originalIndex}"
+                    aria-label="Select voter ${item.originalIndex + 1}"
+                    ${isChecked ? "checked" : ""}
+                  >
+                </td>
+                <td class="${slClass}">${item.originalIndex + 1}</td>
+                <td><span class="status-badge ${rowStatusClass}">${statusLabel}</span></td>
+                <td>${formatUpdatedAt(item.updatedAt)}</td>
+              </tr>
+            `;
+          }).join("");
+        }
+
+        if (appState.selectedIndices.size > 0) {
+          selectedInfo.innerHTML = `<strong>${appState.selectedIndices.size} voter(s) selected</strong>`;
+          selectionHint.textContent = "Bulk actions will apply to the checked voters only.";
+        } else if (appState.singleSelectedIndex !== -1) {
+          selectedInfo.innerHTML = `<strong>Selected voter #${appState.singleSelectedIndex + 1}</strong>`;
+          selectionHint.textContent = appState.isReadOnly ? "Read-only mode is active." : "Use action buttons or press Enter to quick-toggle Our.";
+        } else {
+          selectedInfo.innerHTML = "<strong>No voter selected</strong>";
+          selectionHint.textContent = appState.isReadOnly ? "Read-only mode is active." : "Tip: Press / to search, Esc to clear selection.";
+        }
+
+        tableFootnote.textContent = appState.isReadOnly
+          ? "Snapshot view mode is active. Editing is disabled."
+          : "Single click selects. Double click or Enter toggles Our.";
+
+        applyInteractionState();
+      }
+
+      function applyInteractionState() {
+        const canEdit = !appState.isReadOnly && Boolean(appState.currentUser) && !appState.isSubmittingUpdates;
+        const hasAnySelection = appState.selectedIndices.size > 0 || appState.singleSelectedIndex !== -1;
+
+        [markOurBtn, markPolledBtn, removeStatusBtn, resetAllBtn].forEach((button) => {
+          button.disabled = !canEdit;
+        });
+
+        deselectAllBtn.disabled = !canEdit || !hasAnySelection;
+        selectAllCheckbox.disabled = !canEdit || !appState.voters.length;
+        refreshBtn.disabled = appState.isFetchingSnapshot;
+        loginBtn.disabled = appState.isSubmittingUpdates;
+
+        Array.from(document.querySelectorAll(".voter-checkbox")).forEach((checkbox) => {
+          checkbox.disabled = !canEdit;
+        });
+
+        voterCard.setAttribute("aria-busy", String(appState.isSubmittingUpdates || appState.isFetchingSnapshot));
+        backBtn.textContent = appState.isReadOnly ? "Back to Setup" : "Change Booth";
       }
 
       function getActionIndices() {
-        return selectedIndices.size ? Array.from(selectedIndices) : (singleSelectedIndex !== -1 ? [singleSelectedIndex] : []);
+        if (appState.selectedIndices.size > 0) {
+          return Array.from(appState.selectedIndices).filter((index) => index >= 0 && index < appState.voters.length);
+        }
+
+        return appState.singleSelectedIndex >= 0 && appState.singleSelectedIndex < appState.voters.length
+          ? [appState.singleSelectedIndex]
+          : [];
+      }
+
+      function buildUpdatePlan(indices, resolver) {
+        const plannedAt = new Date().toISOString();
+        return Array.from(new Set(indices))
+          .sort((left, right) => left - right)
+          .filter((index) => appState.voters[index])
+          .map((index) => {
+            const current = normalizeVoter(appState.voters[index]);
+            return {
+              index,
+              previous: current,
+              next: {
+                status: normalizeStatus(resolver(current.status)),
+                updatedAt: plannedAt
+              }
+            };
+          });
+      }
+
+      function applyUpdatePlan(plan) {
+        plan.forEach((item) => {
+          appState.voters[item.index] = {
+            status: item.next.status,
+            updatedAt: item.next.updatedAt
+          };
+        });
+        renderTable();
+      }
+
+      function rollbackUpdatePlan(plan) {
+        plan.forEach((item) => {
+          appState.voters[item.index] = {
+            status: item.previous.status,
+            updatedAt: item.previous.updatedAt
+          };
+        });
+        renderTable();
+        showToast("Update failed and was rolled back.", "error");
+      }
+
+      async function runWithConcurrency(items, worker, limit) {
+        const results = new Array(items.length);
+        let cursor = 0;
+
+        async function runner() {
+          while (true) {
+            const currentIndex = cursor;
+            cursor += 1;
+
+            if (currentIndex >= items.length) {
+              return;
+            }
+
+            results[currentIndex] = await worker(items[currentIndex], currentIndex);
+          }
+        }
+
+        const workerCount = Math.min(limit, items.length);
+        await Promise.all(Array.from({ length: workerCount }, () => runner()));
+        return results;
+      }
+
+      async function updateVoterStatus(index, nextStatus, updatedAt) {
+        if (appState.isReadOnly || !appState.currentUser) {
+          return false;
+        }
+
+        try {
+          const response = await fetch(UPDATE_WORKER_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              boothId: appState.boothId,
+              voterIndex: index,
+              newStatus: nextStatus,
+              updatedAt,
+              editorUid: appState.currentUser.uid
+            })
+          });
+
+          if (!response.ok) {
+            const message = safeJsonParse(await response.text());
+            throw new Error(message && message.error ? message.error : "Update failed");
+          }
+
+          return true;
+        } catch (error) {
+          console.error("Update error:", error);
+          return false;
+        }
+      }
+
+      async function bulkUpdateStatus(indices, resolver) {
+        if (appState.isReadOnly || !appState.currentUser || !indices.length) {
+          return false;
+        }
+
+        const plan = buildUpdatePlan(indices, resolver);
+        if (!plan.length) {
+          return false;
+        }
+
+        appState.isSubmittingUpdates = true;
+        applyInteractionState();
+        applyUpdatePlan(plan);
+        setConnectionState("syncing", `Submitting ${plan.length} update${plan.length === 1 ? "" : "s"}`);
+
+        const results = await runWithConcurrency(
+          plan,
+          (item) => updateVoterStatus(item.index, item.next.status, item.next.updatedAt),
+          UPDATE_CONCURRENCY
+        );
+
+        const hasFailure = results.some((result) => !result);
+
+        if (hasFailure) {
+          rollbackUpdatePlan(plan);
+          setConnectionState(navigator.onLine ? "error" : "offline", "Update failed");
+        } else {
+          showToast(`Updated ${plan.length} voter${plan.length === 1 ? "" : "s"}.`, "success");
+          setConnectionState("live", "Live sync active");
+          window.clearTimeout(appState.refreshConfirmationTimer);
+          appState.refreshConfirmationTimer = window.setTimeout(() => {
+            fetchSnapshot({ silent: true });
+          }, 1400);
+        }
+
+        appState.isSubmittingUpdates = false;
+        applyInteractionState();
+        return !hasFailure;
+      }
+
+      function getQuickToggleStatus(currentStatus) {
+        if (currentStatus === "our") {
+          return "";
+        }
+        if (currentStatus === "polled") {
+          return "ourpolled";
+        }
+        if (currentStatus === "ourpolled") {
+          return "polled";
+        }
+        return "our";
       }
 
       async function performAction(statusResolver) {
         const indices = getActionIndices();
-        if (!indices.length) { alert('Select at least one voter.'); return; }
-        const filtered = getFilteredVoters();
-        if (indices.length === filtered.length && filtered.length > 0) {
-          if (!confirm(`⚠️ Update ALL ${filtered.length} voters?`)) return;
+
+        if (!indices.length) {
+          alert("Select at least one voter.");
+          return;
         }
-        await bulkUpdateStatus(indices, statusResolver);
-        selectedIndices.clear();
-        singleSelectedIndex = -1;
+
+        const filteredIndices = new Set(getFilteredVoters().map((item) => item.originalIndex));
+        const isAllVisibleSelected = indices.length > 1 && indices.length === filteredIndices.size && indices.every((index) => filteredIndices.has(index));
+
+        if (isAllVisibleSelected) {
+          const confirmed = confirm(`Update all ${indices.length} visible voters?`);
+          if (!confirmed) {
+            return;
+          }
+        }
+
+        const success = await bulkUpdateStatus(indices, statusResolver);
+        if (success) {
+          clearSelection();
+          renderTable();
+        }
+      }
+
+      async function copyText(value) {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          await navigator.clipboard.writeText(value);
+          return true;
+        }
+
+        const fallback = document.createElement("textarea");
+        fallback.value = value;
+        fallback.setAttribute("readonly", "readonly");
+        fallback.style.position = "absolute";
+        fallback.style.left = "-9999px";
+        document.body.appendChild(fallback);
+        fallback.select();
+
+        try {
+          const copied = document.execCommand("copy");
+          document.body.removeChild(fallback);
+          return copied;
+        } catch (error) {
+          document.body.removeChild(fallback);
+          return false;
+        }
+      }
+
+      function buildShareUrl() {
+        const shareUrl = new URL(window.location.href);
+        shareUrl.search = "";
+        shareUrl.hash = "";
+        shareUrl.searchParams.set("booth", appState.boothId);
+        shareUrl.searchParams.set("mode", "view");
+        shareUrl.searchParams.set("assembly", displayAssembly.textContent.trim());
+        shareUrl.searchParams.set("boothNo", displayBooth.textContent.trim());
+        shareUrl.searchParams.set("total", String(appState.totalVoters));
+        return shareUrl.toString();
+      }
+
+      async function handleShareViewLink() {
+        const url = buildShareUrl();
+        const copied = await copyText(url);
+
+        if (copied) {
+          showToast("Viewer link copied.", "success");
+          return;
+        }
+
+        window.prompt("Copy this viewer link:", url);
+      }
+
+      function toggleSingleSelection(index) {
+        if (appState.singleSelectedIndex === index) {
+          appState.singleSelectedIndex = -1;
+        } else {
+          appState.singleSelectedIndex = index;
+        }
         renderTable();
       }
 
-      // ---------- EVENT LISTENERS ----------
-      function setupEventListeners() {
-        tbody.addEventListener('change', e => {
-          if (!e.target.classList.contains('voter-checkbox') || isReadOnly) return;
-          const idx = +e.target.dataset.index;
-          e.target.checked ? selectedIndices.add(idx) : selectedIndices.delete(idx);
-          singleSelectedIndex = -1;
-          renderTable();
-        });
-        selectAllCheckbox.addEventListener('change', e => {
-          if (isReadOnly) return;
-          const filtered = getFilteredVoters();
-          filtered.forEach(item => e.target.checked ? selectedIndices.add(item.originalIndex) : selectedIndices.delete(item.originalIndex));
-          singleSelectedIndex = -1;
-          renderTable();
-        });
-        deselectAllBtn.addEventListener('click', () => { if (!isReadOnly) { selectedIndices.clear(); singleSelectedIndex = -1; renderTable(); } });
-        tbody.addEventListener('click', e => {
-          if (e.target.type === 'checkbox' || isReadOnly || !currentUser) return;
-          const row = e.target.closest('tr.voter-row');
-          if (!row || selectedIndices.size) return;
-          singleSelectedIndex = +row.dataset.index;
-          renderTable();
-        });
-        tbody.addEventListener('dblclick', e => {
-          if (isReadOnly || !currentUser) return;
-          const row = e.target.closest('tr.voter-row');
-          if (!row || selectedIndices.size) return;
-          const idx = +row.dataset.index;
-          const cur = voters[idx]?.status || '';
-          const newStatus = cur === 'our' ? '' : (cur === 'polled' ? 'ourpolled' : (cur === 'ourpolled' ? 'polled' : 'our'));
-          bulkUpdateStatus([idx], () => newStatus);
-          singleSelectedIndex = idx;
-          renderTable();
-        });
-        markOurBtn.addEventListener('click', () => performAction(cur => cur === 'polled' ? 'ourpolled' : 'our'));
-        markPolledBtn.addEventListener('click', () => performAction(cur => cur === 'our' ? 'ourpolled' : 'polled'));
-        removeStatusBtn.addEventListener('click', () => performAction(() => ''));
-        filterBtns.forEach(b => b.addEventListener('click', () => {
-          filterBtns.forEach(x => x.classList.remove('active'));
-          b.classList.add('active');
-          currentFilter = b.dataset.filter;
-          renderTable();
-        }));
-        searchInput.addEventListener('input', e => { searchTerm = e.target.value; renderTable(); });
-        resetAllBtn.addEventListener('click', async () => {
-          if (isReadOnly || !currentUser) return;
-          if (!confirm('Reset all voter statuses?')) return;
-          const indices = Array.from({length: totalVoters}, (_,i) => i);
-          await bulkUpdateStatus(indices, () => '');
-        });
-        shareViewLinkBtn.addEventListener('click', () => {
-          const url = `${location.origin}${location.pathname}?booth=${encodeURIComponent(boothId)}&mode=view`;
-          navigator.clipboard.writeText(url).then(() => showToast('📋 Viewer link copied!', 'success')).catch(() => prompt('Copy:', url));
-        });
-        backBtn.addEventListener('click', () => location.href = 'index.html');
-        logoutBtn.addEventListener('click', async () => {
-          if (confirm('Are you sure you want to log out?')) {
-            stopPolling();
-            await signOutUser(auth);
-          }
-        });
-        window.addEventListener('beforeunload', stopPolling);
-        window.addEventListener('pagehide', stopPolling);
+      function toggleCheckedSelection(index) {
+        if (appState.selectedIndices.has(index)) {
+          appState.selectedIndices.delete(index);
+        } else {
+          appState.selectedIndices.add(index);
+        }
+        appState.singleSelectedIndex = -1;
+        renderTable();
       }
 
-      // ---------- AUTH OBSERVER ----------
-      onAuthStateChanged(auth, async (user) => {
-        currentUser = user;
-        const needsAuth = !isReadOnly && !user;
-        loginCard.style.display = needsAuth ? 'block' : 'none';
-        voterCard.style.display = needsAuth ? 'none' : 'block';
-        logoutBtn.style.display = (user && !isReadOnly) ? 'inline-flex' : 'none';
-        
-        stopPolling();
-        if (!needsAuth) {
-          if (!isReadOnly && user) await ensureBoothExists();
-          startPolling(boothId);
-        }
-        applyReadOnlyMode();
-      });
+      function setupEventListeners() {
+        tbody.addEventListener("change", (event) => {
+          const checkbox = event.target.closest(".voter-checkbox");
+          if (!checkbox) {
+            return;
+          }
 
-      loginBtn.addEventListener('click', async () => {
-        const email = loginEmail.value.trim(), password = loginPassword.value;
-        if (!email || !password) { loginError.textContent = 'Please enter both email and password.'; return; }
-        try {
-          await signIn(auth, email, password);
-          loginError.textContent = ''; loginEmail.value = loginPassword.value = '';
-        } catch (error) { loginError.textContent = error.message; }
-      });
+          const index = Number.parseInt(checkbox.dataset.index, 10);
+          if (!Number.isFinite(index)) {
+            return;
+          }
 
-      setupEventListeners();
+          if (checkbox.checked) {
+            appState.selectedIndices.add(index);
+          } else {
+            appState.selectedIndices.delete(index);
+          }
+
+          appState.singleSelectedIndex = -1;
+          renderTable();
+        });
+
+        selectAllCheckbox.addEventListener("change", (event) => {
+          const filtered = getFilteredVoters();
+          filtered.forEach((item) => {
+            if (event.target.checked) {
+              appState.selectedIndices.add(item.originalIndex);
+            } else {
+              appState.selectedIndices.delete(item.originalIndex);
+            }
+          });
+          appState.singleSelectedIndex = -1;
+          renderTable();
+        });
+
+        deselectAllBtn.addEventListener("click", () => {
+          clearSelection();
+          renderTable();
+        });
+
+        tbody.addEventListener("click", (event) => {
+          if (event.target.type === "checkbox" || appState.isReadOnly || !appState.currentUser || appState.isSubmittingUpdates) {
+            return;
+          }
+
+          const row = event.target.closest("tr.voter-row");
+          if (!row || appState.selectedIndices.size) {
+            return;
+          }
+
+          const index = Number.parseInt(row.dataset.index, 10);
+          if (!Number.isFinite(index)) {
+            return;
+          }
+
+          toggleSingleSelection(index);
+        });
+
+        tbody.addEventListener("dblclick", async (event) => {
+          if (appState.isReadOnly || !appState.currentUser || appState.isSubmittingUpdates) {
+            return;
+          }
+
+          const row = event.target.closest("tr.voter-row");
+          if (!row || appState.selectedIndices.size) {
+            return;
+          }
+
+          const index = Number.parseInt(row.dataset.index, 10);
+          if (!Number.isFinite(index)) {
+            return;
+          }
+
+          appState.singleSelectedIndex = index;
+          const currentStatus = normalizeStatus(appState.voters[index] && appState.voters[index].status);
+          const success = await bulkUpdateStatus([index], () => getQuickToggleStatus(currentStatus));
+          if (success) {
+            renderTable();
+          }
+        });
+
+        tbody.addEventListener("keydown", async (event) => {
+          const row = event.target.closest("tr.voter-row");
+          if (!row) {
+            return;
+          }
+
+          const index = Number.parseInt(row.dataset.index, 10);
+          if (!Number.isFinite(index)) {
+            return;
+          }
+
+          if (event.key === " " && !appState.isReadOnly && appState.currentUser && !appState.isSubmittingUpdates) {
+            event.preventDefault();
+            toggleCheckedSelection(index);
+            return;
+          }
+
+          if (event.key === "Enter" && !appState.isReadOnly && appState.currentUser && !appState.isSubmittingUpdates) {
+            event.preventDefault();
+            appState.singleSelectedIndex = index;
+            const currentStatus = normalizeStatus(appState.voters[index] && appState.voters[index].status);
+            const success = await bulkUpdateStatus([index], () => getQuickToggleStatus(currentStatus));
+            if (success) {
+              renderTable();
+            }
+          }
+        });
+
+        markOurBtn.addEventListener("click", () => performAction((current) => current === "polled" ? "ourpolled" : "our"));
+        markPolledBtn.addEventListener("click", () => performAction((current) => current === "our" ? "ourpolled" : "polled"));
+        removeStatusBtn.addEventListener("click", () => performAction(() => ""));
+
+        filterBtns.forEach((button) => {
+          button.addEventListener("click", () => {
+            appState.currentFilter = button.dataset.filter;
+            renderTable();
+          });
+        });
+
+        searchInput.addEventListener("input", (event) => {
+          appState.searchTerm = event.target.value.trim();
+          renderTable();
+        });
+
+        refreshBtn.addEventListener("click", () => {
+          fetchSnapshot({ silent: false, announceSuccess: true });
+        });
+
+        resetAllBtn.addEventListener("click", async () => {
+          if (appState.isReadOnly || !appState.currentUser || appState.isSubmittingUpdates) {
+            return;
+          }
+
+          const confirmed = confirm(`Reset all ${appState.totalVoters} voter statuses?`);
+          if (!confirmed) {
+            return;
+          }
+
+          const indices = Array.from({ length: appState.voters.length }, (_, index) => index);
+          const success = await bulkUpdateStatus(indices, () => "");
+          if (success) {
+            clearSelection();
+            renderTable();
+          }
+        });
+
+        shareViewLinkBtn.addEventListener("click", () => {
+          handleShareViewLink().catch((error) => {
+            console.error("Share link error:", error);
+            showToast("Unable to copy viewer link.", "error");
+          });
+        });
+
+        backBtn.addEventListener("click", () => {
+          window.location.assign(new URL("index.html", window.location.href).toString());
+        });
+
+        logoutBtn.addEventListener("click", async () => {
+          const confirmed = confirm("Are you sure you want to log out?");
+          if (!confirmed) {
+            return;
+          }
+
+          await signOutUser(auth);
+          showToast("Logged out.", "success");
+        });
+
+        loginBtn.addEventListener("click", async () => {
+          const email = loginEmail.value.trim();
+          const password = loginPassword.value;
+
+          if (!email || !password) {
+            loginError.textContent = "Please enter both email and password.";
+            return;
+          }
+
+          loginBtn.disabled = true;
+          loginError.textContent = "";
+
+          try {
+            await signIn(auth, email, password);
+            loginEmail.value = "";
+            loginPassword.value = "";
+            showToast("Login successful.", "success");
+          } catch (error) {
+            loginError.textContent = error.message || "Login failed.";
+          } finally {
+            loginBtn.disabled = false;
+          }
+        });
+
+        loginPassword.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            loginBtn.click();
+          }
+        });
+
+        document.addEventListener("keydown", (event) => {
+          const activeTag = document.activeElement ? document.activeElement.tagName : "";
+          const isTypingContext = activeTag === "INPUT" || activeTag === "TEXTAREA";
+
+          if (event.key === "/" && !isTypingContext) {
+            event.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+            return;
+          }
+
+          if (event.key === "Escape") {
+            if (document.activeElement === searchInput && searchInput.value) {
+              searchInput.value = "";
+              appState.searchTerm = "";
+              renderTable();
+              return;
+            }
+
+            if (appState.selectedIndices.size || appState.singleSelectedIndex !== -1) {
+              clearSelection();
+              renderTable();
+            }
+          }
+        });
+
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) {
+            stopPolling();
+            if (appState.hasLoadedSnapshot) {
+              setConnectionState("idle", "Polling paused while hidden");
+            }
+          } else if (canPollSnapshot()) {
+            setConnectionState(navigator.onLine ? "syncing" : "offline", navigator.onLine ? "Resuming sync" : "Offline - showing last snapshot");
+            startPolling();
+          }
+        });
+
+        window.addEventListener("online", () => {
+          setConnectionState("syncing", "Back online - refreshing");
+          if (!document.hidden && canPollSnapshot()) {
+            fetchSnapshot({ silent: false, announceSuccess: true }).finally(() => {
+              schedulePolling(appState.isReadOnly ? SNAPSHOT_POLL_MS.view : SNAPSHOT_POLL_MS.edit);
+            });
+          }
+        });
+
+        window.addEventListener("offline", () => {
+          setConnectionState("offline", "Offline - showing last snapshot");
+        });
+
+        window.addEventListener("pagehide", () => {
+          stopPolling();
+        });
+      }
     }
-
-    initWhenReady();
   })();
 </script>
 </body>
