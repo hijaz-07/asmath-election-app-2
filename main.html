@@ -32,6 +32,7 @@
     console.log('✅ Firebase Auth initialized');
   </script>
   <style>
+    /* ... all styles unchanged from previous version ... */
     :root {
       --bg1: #0f172a; --bg2: #1e293b; --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 255, 255, 0.14);
       --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --accent2: #8b5cf6; --danger: #fb7185; --success: #34d399;
@@ -295,7 +296,17 @@
     const signOutUser = window.firebaseSignOut;
 
     const urlParams = new URLSearchParams(window.location.search);
-    const boothId = urlParams.get('booth');
+    // Ensure boothId is always a string
+    let boothId = urlParams.get('booth');
+    if (!boothId) {
+      alert('No booth specified. Returning to setup.');
+      window.location.href = 'index.html';
+      return;
+    }
+    // Decode in case it was encoded
+    boothId = decodeURIComponent(boothId);
+    console.log('📋 Booth ID:', boothId);
+
     const mode = urlParams.get('mode') || 'edit';
     const totalParam = urlParams.get('total');
     const assemblyParam = urlParams.get('assembly');
@@ -346,8 +357,6 @@
     displayAssembly.textContent = boothData.assemblyName;
     displayBooth.textContent = boothData.boothNo;
     displayTotal.textContent = totalVoters;
-
-    if (!boothId) { alert('No booth specified.'); window.location.href = 'index.html'; return; }
 
     onAuthStateChanged(auth, (user) => {
       currentUser = user;
@@ -427,18 +436,36 @@
 
     // ---------- Voter Update via HTTP POST ----------
     async function updateVoterStatus(index, newStatus) {
-      if (isReadOnly || !currentUser) return;
+      if (isReadOnly || !currentUser) {
+        console.warn('Update blocked: readOnly or not logged in');
+        return;
+      }
+      // Validate parameters
+      if (!boothId) {
+        console.error('boothId is null or undefined');
+        alert('Error: Booth ID is missing.');
+        return;
+      }
+      if (index === undefined || index === null) {
+        console.error('voterIndex is undefined');
+        alert('Error: Voter index is missing.');
+        return;
+      }
+      console.log(`📤 Updating booth ${boothId}, voter ${index} to "${newStatus}"`);
+      
       try {
         const res = await fetch(UPDATE_WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ boothId, voterIndex: index, newStatus })
         });
+        const result = await res.json();
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Update failed');
+          throw new Error(result.error || 'Update failed');
         }
+        console.log('✅ Update successful:', result);
       } catch (error) {
+        console.error('Update error:', error);
         alert('Failed to update voter: ' + error.message);
       }
     }
@@ -554,6 +581,7 @@
 
     async function performAction(statusResolver) {
       const indices = getActionIndices();
+      console.log('🎯 Action indices:', indices);
       if (indices.length === 0) {
         alert('Please select at least one voter (use checkboxes or click a row).');
         return;
